@@ -5,6 +5,8 @@ import { WebGLRenderer } from '../webgl/renderer'
 const DEFAULT_PARAMS = {
   colorGrade: 'none',
   hueShift: 0,
+  saturation: 0,
+  vignette: 0,
   noise: 0,
   chromaShift: 0,
   pixelSort: 0,
@@ -65,6 +67,44 @@ const PRESETS = {
     colorGrade: 'neon', noise: 0.08, pixelSort: 0.45,
   },
 }
+
+const PRESET_LABELS = {
+  vhsDecay: 'Vessel', meltdown: 'Tallow', glitchcore: 'Calcium', cathedral: 'Kelp',
+  datamosh: 'Silt', neonRot: 'Nerve', voidDrift: 'Marrow', infrableed: 'Amber',
+  staticField: 'Mold', prismBreak: 'Seam',
+}
+
+const GRADES = [
+  { value: 'none', label: 'None' },
+  { value: 'vhs', label: 'VHS' },
+  { value: 'neon', label: 'Neon' },
+  { value: 'infrared', label: 'Infrared' },
+  { value: 'grayscale', label: 'Grayscale' },
+]
+
+// Each mod's category drives its accent color in the deck:
+// tone = hue/color · warp = continuous GPU distortion · corrupt = destructive CPU glitch
+const MOD_CONFIG = [
+  { key: 'hueShift',          label: 'Hue Shift',      min: 0, max: 360, step: 1,    display: v => `${Math.round(v)}°`,        cat: 'tone' },
+  { key: 'saturation',        label: 'Saturation',     min: 0, max: 1,   step: 0.01, display: pct,                              cat: 'tone' },
+  { key: 'vignette',          label: 'Vignette',       min: 0, max: 1,   step: 0.01, display: pct,                              cat: 'tone' },
+  { key: 'noise',              label: 'Noise',           min: 0, max: 1,   step: 0.01, display: pct,                              cat: 'warp' },
+  { key: 'chromaShift',        label: 'Chroma Shift',   min: 0, max: 50,  step: 1,    display: v => v === 0 ? 'Off' : `${v}px`, cat: 'warp' },
+  { key: 'interlace',          label: 'Interlace',      min: 0, max: 30,  step: 1,    display: v => v === 0 ? 'Off' : `${v}px`, cat: 'warp' },
+  { key: 'waveWarp',           label: 'Wave Warp',      min: 0, max: 40,  step: 1,    display: v => v === 0 ? 'Off' : `${v}px`, cat: 'warp' },
+  { key: 'bitCrush',           label: 'Bit Crush',      min: 0, max: 1,   step: 0.01, display: pct,                              cat: 'warp' },
+  { key: 'displace',           label: 'Displace',       min: 0, max: 100, step: 1,    display: v => v === 0 ? 'Off' : `${v}px`, cat: 'warp' },
+  { key: 'feedback',           label: 'Feedback',       min: 0, max: 1,   step: 0.01, display: pct,                              cat: 'warp' },
+  { key: 'scanlineIntensity',  label: 'Scanlines',      min: 0, max: 1,   step: 0.01, display: pct,                              cat: 'warp' },
+  { key: 'pixelSort',          label: 'Pixel Sort',     min: 0, max: 1,   step: 0.01, display: pct,                              cat: 'corrupt' },
+  { key: 'sortVertical',       label: 'Sort Vertical',  min: 0, max: 1,   step: 0.01, display: pct,                              cat: 'corrupt' },
+  { key: 'channelSort',        label: 'Channel Sort',   min: 0, max: 1,   step: 0.01, display: pct,                              cat: 'corrupt' },
+  { key: 'rowShift',           label: 'Row Shift',      min: 0, max: 1,   step: 0.01, display: pct,                              cat: 'corrupt' },
+  { key: 'blockGlitch',        label: 'Block Glitch',   min: 0, max: 20,  step: 1,    display: v => v === 0 ? 'Off' : `${v}`,   cat: 'corrupt' },
+  { key: 'smear',               label: 'Smear',          min: 0, max: 1,   step: 0.01, display: pct,                              cat: 'corrupt' },
+  { key: 'melt',                label: 'Melt',           min: 0, max: 1,   step: 0.01, display: pct,                              cat: 'corrupt' },
+  { key: 'kaleidoscope',       label: 'Kaleidoscope',   min: 0, max: 8,   step: 1,    display: v => v === 0 ? 'Off' : `${v}`,   cat: 'corrupt' },
+]
 
 export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
   // Two canvases: WebGL renders offscreen, 2D canvas is visible + handles CPU effects
@@ -273,6 +313,8 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
     setParams({
       colorGrade:       grades[Math.floor(Math.random() * grades.length)],
       hueShift:         maybe(0.6, 0, 340, true),
+      saturation:       maybe(0.5, 0.1, 0.6),
+      vignette:         maybe(0.4, 0.1, 0.5),
       noise:            maybe(0.5, 0.02, 0.4),
       chromaShift:      maybe(0.5, 2, 40, true),
       pixelSort:        maybe(0.5, 0.1, 0.9),
@@ -425,9 +467,41 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
       {/* Hidden WebGL canvas */}
       <canvas ref={glCanvasRef} style={{ display: 'none' }} />
 
-      {/* ── Visible canvas + actions ── */}
-      <div className="canvas-pane">
-        <div className="canvas-wrapper" ref={canvasWrapperRef}>
+      {/* ── SG-01 Console: display + transport + mod sections in one unit ── */}
+      <div className="mod-console">
+        <span className="screw s-tl" aria-hidden="true" />
+        <span className="screw s-tr" aria-hidden="true" />
+        <span className="screw s-bl" aria-hidden="true" />
+        <span className="screw s-br" aria-hidden="true" />
+
+        <div className="console-header">
+          <span className="console-title">SG-01 · MOD CONSOLE</span>
+          <div className="chip-row">
+            <button
+              className={`chip${selectedPreset === '' ? ' active' : ''}`}
+              onClick={() => { setSelectedPreset(''); setParams(DEFAULT_PARAMS) }}
+            >
+              None
+            </button>
+            {Object.keys(PRESETS).map(key => (
+              <button
+                key={key}
+                className={`chip${selectedPreset === key ? ' active' : ''}`}
+                onClick={() => { setSelectedPreset(key); setParams({ ...DEFAULT_PARAMS, ...PRESETS[key] }) }}
+              >
+                {PRESET_LABELS[key]}
+              </button>
+            ))}
+          </div>
+          <div className="console-actions">
+            <button className="console-btn" onClick={handleRandomize}>✦ Random</button>
+            <button className="console-btn" onClick={() => { setParams(DEFAULT_PARAMS); setSelectedPreset('') }}>⟲ Clear</button>
+            <button className="console-btn" onClick={onReset} title="Load different media">⏏ Eject</button>
+          </div>
+        </div>
+
+        <div className="console-display">
+          <div className="canvas-wrapper" ref={canvasWrapperRef}>
           <canvas ref={canvasRef} className="result-img" />
           <button className="fullscreen-btn" onClick={toggleFullscreen} title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}>
             {isFullscreen ? (
@@ -441,125 +515,181 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
             )}
           </button>
         </div>
-        <div className="result-actions">
-          <div className="download-wrap">
-            {sourceType === 'video' || sourceType === 'webcam' ? (
-              recording ? (
-                <button className="download-btn recording" onClick={handleRecordStop}>Stop &amp; Save</button>
+          <div className="transport">
+            <div className="download-wrap">
+              {sourceType === 'video' || sourceType === 'webcam' ? (
+                recording ? (
+                  <button className="console-btn primary recording" onClick={handleRecordStop}>■ Stop &amp; Save</button>
+                ) : (
+                  <>
+                    <button className="console-btn primary" onClick={() => setShowFormatPicker(p => !p)}>● Record ▾</button>
+                    {showFormatPicker && (
+                      <div className="format-picker">
+                        {['webm', 'mp4'].map(fmt => (
+                          <button key={fmt} className="fmt-option" onClick={() => {
+                            setExportFormat(fmt); setShowFormatPicker(false); handleRecordStartWith(fmt)
+                          }}>{fmt.toUpperCase()}</button>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )
               ) : (
-                <>
-                  <button className="download-btn" onClick={() => setShowFormatPicker(p => !p)}>Record ▾</button>
-                  {showFormatPicker && (
-                    <div className="format-picker">
-                      {['webm', 'mp4'].map(fmt => (
-                        <button key={fmt} className="fmt-option" onClick={() => {
-                          setExportFormat(fmt); setShowFormatPicker(false); handleRecordStartWith(fmt)
-                        }}>{fmt.toUpperCase()}</button>
-                      ))}
-                    </div>
-                  )}
-                </>
-              )
-            ) : (
-              <button className="download-btn" onClick={handleDownload}>Download</button>
+                <button className="console-btn primary" onClick={handleDownload}>↓ Download</button>
+              )}
+            </div>
+            {sourceType === 'video' && (
+              <button className="console-btn" onClick={togglePlay}>{playing ? '❚❚ Pause' : '▶ Play'}</button>
             )}
           </div>
-          {sourceType === 'video' && (
-            <button className="reset-btn" onClick={togglePlay}>{playing ? 'Pause' : 'Play'}</button>
-          )}
-          <button className="reset-btn" onClick={onReset}>← Back</button>
-        </div>
-      </div>
-
-
-      {/* ── Controls ── */}
-      <div className="controls-pane">
-        <div className="control-row">
-          <label className="ctrl-label">Color Grade</label>
-          <select className="ctrl-select" value={params.colorGrade} onChange={e => set('colorGrade', e.target.value)}>
-            <option value="none">None</option>
-            <option value="vhs">VHS</option>
-            <option value="neon">Neon</option>
-            <option value="infrared">Infrared</option>
-            <option value="grayscale">Grayscale</option>
-          </select>
-        </div>
-        <div className="control-row">
-          <label className="ctrl-label">Preset</label>
-          <select className="ctrl-select" value={selectedPreset} onChange={e => {
-            setSelectedPreset(e.target.value)
-            const p = PRESETS[e.target.value]
-            if (p) setParams({ ...DEFAULT_PARAMS, ...p })
-            else setParams(DEFAULT_PARAMS)
-          }}>
-            <option value="">None</option>
-            <option value="vhsDecay">Vessel</option>
-            <option value="meltdown">Tallow</option>
-            <option value="glitchcore">Calcium</option>
-            <option value="cathedral">Kelp</option>
-            <option value="datamosh">Silt</option>
-            <option value="neonRot">Nerve</option>
-            <option value="voidDrift">Marrow</option>
-            <option value="infrableed">Amber</option>
-            <option value="staticField">Mold</option>
-            <option value="prismBreak">Seam</option>
-          </select>
         </div>
 
-        <SliderRow label="Hue Shift"    value={params.hueShift}          min={0}   max={360} step={1}    display={v => `${Math.round(v)}°`}        onChange={v => set('hueShift', v)} />
-        <SliderRow label="Noise"        value={params.noise}             min={0}   max={1}   step={0.01} display={v => pct(v)}                     onChange={v => set('noise', v)} />
-        <SliderRow label="Chroma Shift" value={params.chromaShift}       min={0}   max={50}  step={1}    display={v => v === 0 ? 'Off' : `${v}px`} onChange={v => set('chromaShift', v)} />
-        <SliderRow label="Pixel Sort"   value={params.pixelSort}         min={0}   max={1}   step={0.01} display={v => pct(v)}                     onChange={v => set('pixelSort', v)} />
-        <SliderRow label="Sort Vertical" value={params.sortVertical}     min={0}   max={1}   step={0.01} display={v => pct(v)}                     onChange={v => set('sortVertical', v)} />
-        <SliderRow label="Channel Sort" value={params.channelSort}       min={0}   max={1}   step={0.01} display={v => pct(v)}                     onChange={v => set('channelSort', v)} />
-        <SliderRow label="Row Shift"    value={params.rowShift}          min={0}   max={1}   step={0.01} display={v => pct(v)}                     onChange={v => set('rowShift', v)} />
-        <SliderRow label="Block Glitch" value={params.blockGlitch}       min={0}   max={20}  step={1}    display={v => v === 0 ? 'Off' : `${v}`}   onChange={v => set('blockGlitch', v)} />
-        <SliderRow label="Smear"        value={params.smear}             min={0}   max={1}   step={0.01} display={v => pct(v)}                     onChange={v => set('smear', v)} />
-        <SliderRow label="Interlace"    value={params.interlace}         min={0}   max={30}  step={1}    display={v => v === 0 ? 'Off' : `${v}px`} onChange={v => set('interlace', v)} />
-        <SliderRow label="Wave Warp"    value={params.waveWarp}          min={0}   max={40}  step={1}    display={v => v === 0 ? 'Off' : `${v}px`} onChange={v => set('waveWarp', v)} />
-        <SliderRow label="Bit Crush"    value={params.bitCrush}          min={0}   max={1}   step={0.01} display={v => pct(v)}                     onChange={v => set('bitCrush', v)} />
-        <SliderRow label="Displace"     value={params.displace}          min={0}   max={100} step={1}    display={v => v === 0 ? 'Off' : `${v}px`} onChange={v => set('displace', v)} />
-        <SliderRow label="Melt"          value={params.melt}              min={0}   max={1}   step={0.01} display={v => pct(v)}                          onChange={v => set('melt', v)} />
-        <SliderRow label="Kaleidoscope" value={params.kaleidoscope}      min={0}   max={8}   step={1}    display={v => v === 0 ? 'Off' : `${v}`}        onChange={v => set('kaleidoscope', v)} />
-        <SliderRow label="Feedback"     value={params.feedback}          min={0}   max={1}   step={0.01} display={v => pct(v)}                     onChange={v => set('feedback', v)} />
-        <SliderRow label="Scanlines"    value={params.scanlineIntensity} min={0}   max={1}   step={0.01} display={v => pct(v)}                     onChange={v => set('scanlineIntensity', v)} />
+        <div className="console-body">
+          <section className="console-section sec-tone">
+            <h3 className="console-section-title">Tone</h3>
+            <div className="chip-row chip-row-tight">
+              {GRADES.map(g => (
+                <button
+                  key={g.value}
+                  className={`chip${params.colorGrade === g.value ? ' active' : ''}`}
+                  onClick={() => set('colorGrade', g.value)}
+                >
+                  {g.label}
+                </button>
+              ))}
+            </div>
+            <div className="knob-row">
+              {MOD_CONFIG.filter(c => c.cat === 'tone').map(cfg => (
+                <Knob key={cfg.key} label={cfg.label} cat={cfg.cat} min={cfg.min} max={cfg.max}
+                  step={cfg.step} display={cfg.display} value={params[cfg.key]} onChange={v => set(cfg.key, v)} />
+              ))}
+            </div>
+          </section>
 
-        <div className="ctrl-divider" />
-        <button className="ghost-btn" onClick={handleRandomize}>Random</button>
-        <button className="ghost-btn" onClick={() => { setParams(DEFAULT_PARAMS); setSelectedPreset('') }}>Reset All</button>
+          <section className="console-section sec-warp">
+            <h3 className="console-section-title">Warp</h3>
+            <div className="knob-row">
+              {MOD_CONFIG.filter(c => c.cat === 'warp').map(cfg => (
+                <Knob key={cfg.key} label={cfg.label} cat={cfg.cat} min={cfg.min} max={cfg.max}
+                  step={cfg.step} display={cfg.display} value={params[cfg.key]} onChange={v => set(cfg.key, v)} />
+              ))}
+            </div>
+          </section>
+
+          <section className="console-section sec-corrupt">
+            <h3 className="console-section-title">Corrupt</h3>
+            <div className="knob-row">
+              {MOD_CONFIG.filter(c => c.cat === 'corrupt').map(cfg => (
+                <Knob key={cfg.key} label={cfg.label} cat={cfg.cat} min={cfg.min} max={cfg.max}
+                  step={cfg.step} display={cfg.display} value={params[cfg.key]} onChange={v => set(cfg.key, v)} />
+              ))}
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   )
 }
 
 // ── SliderRow ──────────────────────────────────────────────────────────────────
-function SliderRow({ label, value, min, max, step, display, onChange }) {
+// ── Rotary knob control ────────────────────────────────────────────────────
+// Hardware-style dial: drag up/down to turn, double-click to reset,
+// click the value readout to type an exact number.
+const KNOB_SWEEP = 270 // degrees, from -135° to +135°
+
+function knobPoint(cx, cy, r, angleDeg) {
+  const rad = (angleDeg * Math.PI) / 180
+  return [cx + r * Math.sin(rad), cy - r * Math.cos(rad)]
+}
+
+function knobArc(cx, cy, r, a0, a1) {
+  const [x0, y0] = knobPoint(cx, cy, r, a0)
+  const [x1, y1] = knobPoint(cx, cy, r, a1)
+  const large = a1 - a0 > 180 ? 1 : 0
+  return `M ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1}`
+}
+
+function Knob({ label, value, min, max, step, display, cat, onChange }) {
   const [editing, setEditing] = useState(false)
   const [inputVal, setInputVal] = useState('')
-  function handleClick() { setInputVal(String(max <= 1 ? Math.round(value * 100) : value)); setEditing(true) }
+  const dragRef = useRef(null)
+  const active = value > min
+
+  const t = (value - min) / (max - min)
+  const angle = -135 + t * KNOB_SWEEP
+
+  function quantize(v) {
+    const q = Math.round((v - min) / step) * step + min
+    const clamped = Math.min(max, Math.max(min, q))
+    return Math.round(clamped * 100) / 100
+  }
+
+  function onPointerDown(e) {
+    e.preventDefault()
+    e.currentTarget.setPointerCapture(e.pointerId)
+    dragRef.current = { y: e.clientY, v: value }
+  }
+
+  function onPointerMove(e) {
+    if (!dragRef.current) return
+    const dy = dragRef.current.y - e.clientY
+    onChange(quantize(dragRef.current.v + (dy / 150) * (max - min)))
+  }
+
+  function onPointerUp(e) {
+    dragRef.current = null
+    try { e.currentTarget.releasePointerCapture(e.pointerId) } catch { /* noop */ }
+  }
+
+  function handleValueClick() {
+    setInputVal(String(max <= 1 ? Math.round(value * 100) : value))
+    setEditing(true)
+  }
+
   function commit(raw) {
     const num = parseFloat(raw)
-    if (!isNaN(num)) {
-      const actual = max <= 1 ? num / 100 : num
-      onChange(Math.round(Math.min(max, Math.max(min, actual)) * 100) / 100)
-    }
+    if (!isNaN(num)) onChange(quantize(max <= 1 ? num / 100 : num))
     setEditing(false)
   }
+
   return (
-    <div className="control-row">
-      <label className="ctrl-label">{label}</label>
-      <div className="slider-group">
-        <input type="range" className="ctrl-slider" min={min} max={max} step={step} value={value}
-          onChange={e => onChange(parseFloat(e.target.value))} />
-        {editing ? (
-          <input type="number" className="ctrl-value-input" value={inputVal} autoFocus
-            onChange={e => setInputVal(e.target.value)}
-            onBlur={() => commit(inputVal)}
-            onKeyDown={e => { if (e.key === 'Enter') commit(inputVal); if (e.key === 'Escape') setEditing(false) }} />
-        ) : (
-          <span className="ctrl-value editable" onClick={handleClick} title="Click to type">{display(value)}</span>
-        )}
+    <div className={`knob-unit cat-${cat}${active ? ' active' : ''}`}>
+      <div
+        className="knob-dial"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        onDoubleClick={() => onChange(min)}
+        title="Drag up/down · double-click to reset"
+      >
+        <svg className="knob-svg" viewBox="0 0 64 64">
+          {/* track */}
+          <path d={knobArc(32, 32, 24, -135, 135)} className="knob-track" fill="none" />
+          {/* value arc */}
+          {t > 0.001 && (
+            <path d={knobArc(32, 32, 24, -135, angle)} className="knob-value-arc" fill="none" />
+          )}
+          {/* cap */}
+          <circle cx="32" cy="32" r="17" className="knob-cap" />
+          <circle cx="32" cy="32" r="17" className="knob-cap-rim" fill="none" />
+          {/* indicator */}
+          {(() => {
+            const [ix0, iy0] = knobPoint(32, 32, 7, angle)
+            const [ix1, iy1] = knobPoint(32, 32, 14, angle)
+            return <line x1={ix0} y1={iy0} x2={ix1} y2={iy1} className="knob-indicator" />
+          })()}
+        </svg>
       </div>
+      <span className="knob-label">{label}</span>
+      {editing ? (
+        <input type="number" className="ctrl-value-input knob-input" value={inputVal} autoFocus
+          onChange={e => setInputVal(e.target.value)}
+          onBlur={() => commit(inputVal)}
+          onKeyDown={e => { if (e.key === 'Enter') commit(inputVal); if (e.key === 'Escape') setEditing(false) }} />
+      ) : (
+        <span className="knob-value" onClick={handleValueClick} title="Click to type">{display(value)}</span>
+      )}
     </div>
   )
 }

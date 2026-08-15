@@ -1,7 +1,8 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 
 export default function UploadForm({ onReady }) {
   const fileInputRef = useRef()
+  const [isDragging, setIsDragging] = useState(false)
 
   function handleFile(file) {
     if (!file) return
@@ -24,15 +25,24 @@ export default function UploadForm({ onReady }) {
   return (
     <div className="upload-form">
       <div
-        className="drop-zone"
-        onDrop={e => { e.preventDefault(); handleFile(e.dataTransfer.files[0]) }}
+        className={`drop-zone${isDragging ? ' dragging' : ''}`}
+        onDrop={e => { e.preventDefault(); setIsDragging(false); handleFile(e.dataTransfer.files[0]) }}
         onDragOver={e => e.preventDefault()}
+        onDragEnter={e => { e.preventDefault(); setIsDragging(true) }}
+        onDragLeave={e => { e.preventDefault(); setIsDragging(false) }}
         onClick={() => fileInputRef.current.click()}
       >
+        <span className="corner c-tl" aria-hidden="true" />
+        <span className="corner c-tr" aria-hidden="true" />
+        <span className="corner c-bl" aria-hidden="true" />
+        <span className="corner c-br" aria-hidden="true" />
         <div className="drop-hint">
           <span className="drop-icon">⬆</span>
-          <p>Drop an image or video to upload</p>
-          <p className="drop-sub">JPG, PNG, WEBP, MP4, WEBM up to 10MB</p>
+          <p className="drop-main">DROP AN IMAGE OR VIDEO</p>
+          <p className="drop-sub">JPG · PNG · WEBP · MP4 · WEBM — up to 10MB</p>
+          <p className="awaiting">
+            AWAITING SIGNAL<span className="blink">_</span>
+          </p>
         </div>
         <input
           ref={fileInputRef}

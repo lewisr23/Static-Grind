@@ -19,6 +19,8 @@ uniform float u_time;
 uniform float u_seed;
 uniform int u_colorGrade;
 uniform float u_hueShift;
+uniform float u_saturation;
+uniform float u_vignette;
 uniform float u_noise;
 uniform float u_chromaShift;
 uniform float u_interlace;
@@ -129,6 +131,12 @@ void main() {
     c.rgb = vec3(luma);
   }
 
+  // Saturation — push color away from (0) or keep at (1+) grayscale luma
+  if (u_saturation > 0.0) {
+    float luma = dot(c.rgb, vec3(0.299, 0.587, 0.114));
+    c.rgb = mix(vec3(luma), c.rgb, 1.0 + u_saturation * 1.6);
+  }
+
   // Feedback — blend current output with previous frame texture
   if (u_feedback > 0.0) {
     vec4 prev = texture2D(u_prev, v_uv);
@@ -139,6 +147,14 @@ void main() {
   if (u_scanlines > 0.0) {
     float line = sin(v_uv.y * u_res.y * 3.14159265);
     c.rgb *= mix(1.0, max(line, 0.0) * 0.8 + 0.2, u_scanlines);
+  }
+
+  // Vignette — darken toward the frame edges
+  if (u_vignette > 0.0) {
+    vec2 vc = v_uv - 0.5;
+    float dist = length(vc) * 1.4142136;
+    float falloff = smoothstep(0.25, 1.1, dist);
+    c.rgb *= 1.0 - falloff * u_vignette;
   }
 
   gl_FragColor = vec4(clamp(c.rgb, 0.0, 1.0), 1.0);
@@ -186,7 +202,7 @@ function makeTex(gl) {
 // ── WebGLRenderer ─────────────────────────────────────────────────────────────
 const GRADE_MAP = { none: 0, vhs: 1, neon: 2, infrared: 3, grayscale: 4 }
 const EFFECT_UNIFORMS = [
-  'u_colorGrade','u_hueShift','u_noise','u_chromaShift',
+  'u_colorGrade','u_hueShift','u_saturation','u_vignette','u_noise','u_chromaShift',
   'u_interlace','u_waveWarp','u_bitCrush',
   'u_displace','u_feedback','u_scanlines',
 ]
@@ -300,6 +316,8 @@ export class WebGLRenderer {
 
     gl.uniform1i(this._u['u_colorGrade'],  GRADE_MAP[p.colorGrade] ?? 0)
     gl.uniform1f(this._u['u_hueShift'],    p.hueShift)
+    gl.uniform1f(this._u['u_saturation'],  p.saturation)
+    gl.uniform1f(this._u['u_vignette'],    p.vignette)
     gl.uniform1f(this._u['u_noise'],       p.noise)
     gl.uniform1f(this._u['u_chromaShift'], p.chromaShift)
     gl.uniform1f(this._u['u_interlace'],   p.interlace)
