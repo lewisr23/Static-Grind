@@ -341,6 +341,18 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
     link.click()
   }
 
+  // Grabs whatever's currently on the visible canvas (post-WebGL, post-CPU
+  // glitch pass) as a still PNG — works for webcam and video sources, where
+  // the transport only otherwise offers video recording.
+  function handleSnapshot() {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const link = document.createElement('a')
+    link.download = `staticgrind-snapshot-${Date.now()}.png`
+    link.href = canvas.toDataURL('image/png')
+    link.click()
+  }
+
   function togglePlay() {
     const v = videoRef.current
     if (!v) return
@@ -518,22 +530,27 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
           <div className="transport">
             <div className="download-wrap">
               {sourceType === 'video' || sourceType === 'webcam' ? (
-                recording ? (
-                  <button className="console-btn primary recording" onClick={handleRecordStop}>■ Stop &amp; Save</button>
-                ) : (
-                  <>
-                    <button className="console-btn primary" onClick={() => setShowFormatPicker(p => !p)}>● Record ▾</button>
-                    {showFormatPicker && (
-                      <div className="format-picker">
-                        {['webm', 'mp4'].map(fmt => (
-                          <button key={fmt} className="fmt-option" onClick={() => {
-                            setExportFormat(fmt); setShowFormatPicker(false); handleRecordStartWith(fmt)
-                          }}>{fmt.toUpperCase()}</button>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                )
+                <>
+                  {sourceType === 'webcam' && (
+                    <button className="console-btn" onClick={handleSnapshot} title="Save current frame as PNG">📷 Snap</button>
+                  )}
+                  {recording ? (
+                    <button className="console-btn primary recording" onClick={handleRecordStop}>■ Stop &amp; Save</button>
+                  ) : (
+                    <>
+                      <button className="console-btn primary" onClick={() => setShowFormatPicker(p => !p)}>● Record ▾</button>
+                      {showFormatPicker && (
+                        <div className="format-picker">
+                          {['webm', 'mp4'].map(fmt => (
+                            <button key={fmt} className="fmt-option" onClick={() => {
+                              setExportFormat(fmt); setShowFormatPicker(false); handleRecordStartWith(fmt)
+                            }}>{fmt.toUpperCase()}</button>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </>
               ) : (
                 <button className="console-btn primary" onClick={handleDownload}>↓ Download</button>
               )}
