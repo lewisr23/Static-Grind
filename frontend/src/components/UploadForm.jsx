@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { IconUpload } from './icons'
 
 export default function UploadForm({ onReady }) {
   const fileInputRef = useRef()
@@ -37,7 +38,7 @@ export default function UploadForm({ onReady }) {
         <span className="corner c-bl" aria-hidden="true" />
         <span className="corner c-br" aria-hidden="true" />
         <div className="drop-hint">
-          <span className="drop-icon">⬆</span>
+          <span className="drop-icon"><IconUpload /></span>
           <p className="drop-main">DROP AN IMAGE OR VIDEO</p>
           <p className="drop-sub">JPG · PNG · WEBP · MP4 · WEBM — up to 10MB</p>
           <p className="awaiting">

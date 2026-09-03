@@ -37,6 +37,10 @@ export default function NoiseBackground() {
 
       const w = canvas.width
       const h = canvas.height
+      // A 0-size canvas (mid resize, or a browser reporting a transient
+      // viewport of 0 during layout) throws on drawImage below — just skip
+      // the frame and pick it up again once there's something to draw into.
+      if (w === 0 || h === 0) return
 
       // regenerate grain
       for (let i = 0; i < data.length; i += 4) {
@@ -68,7 +72,7 @@ export default function NoiseBackground() {
 
       // random RGB block artifacts
       if (Math.random() < 0.4) {
-        const colors = ['rgba(255,0,60,1)', 'rgba(0,200,255,1)', 'rgba(255,255,255,1)']
+        const colors = ['rgba(255,45,32,1)', 'rgba(255,45,32,1)', 'rgba(255,255,255,1)']
         const n = 1 + ((Math.random() * 3) | 0)
         for (let i = 0; i < n; i++) {
           const bw = 30 + Math.random() * 200

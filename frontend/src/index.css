@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Bebas+Neue&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Bebas+Neue&family=JetBrains+Mono:wght@400;500;700&display=swap');
 
 * {
   box-sizing: border-box;
@@ -10,11 +10,17 @@
   --bg: #000000;
   --surface: #0d0d0d;
   --border: #2a2a2a;
-  --accent: #999999;
-  --accent2: #555555;
+  --red-rgb: 255, 45, 32;
+  --red: rgb(var(--red-rgb));
+  --accent: var(--red);
+  --accent2: rgba(var(--red-rgb), 0.7);
   --text: #cccccc;
   --text-muted: #555555;
   --radius: 4px;
+  /* The console (post-upload UI: knobs, buttons, readouts) reads as an
+     instrument panel, so it runs on a monospace face. The landing screen
+     keeps Inter — this is scoped to .mod-console only. */
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
 }
 
 body {
@@ -48,7 +54,7 @@ body {
   right: -10%;
   top: -10%;
   height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+  background: linear-gradient(90deg, transparent, rgba(var(--red-rgb), 0.6), transparent);
   animation: scanSweep 0.9s ease-out 0.05s both;
   pointer-events: none;
 }
@@ -98,15 +104,17 @@ body {
 }
 
 .logo span {
-  color: #ffffff;
+  color: var(--red);
 }
 
 /* ── Glitch Logo ── */
-/* Static, non-animated chromatic fringe only — no tearing/stutter. */
+/* Static, non-animated chromatic fringe only — no tearing/stutter. Red
+   fringe on one side, a faint white ghost on the other, instead of the
+   red/cyan split you'd get from a real RGB channel offset. */
 .glitch-text {
   position: relative;
   display: inline-block;
-  text-shadow: 1px 0 rgba(255, 0, 60, 0.25), -1px 0 rgba(0, 200, 255, 0.25);
+  text-shadow: 1px 0 rgba(var(--red-rgb), 0.45), -1px 0 rgba(255, 255, 255, 0.15);
 }
 
 .tagline {
@@ -166,20 +174,21 @@ body {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
   overflow: hidden;
   background: var(--surface);
 }
 
 .drop-zone:hover {
   border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(var(--red-rgb), 0.15), 0 0 24px rgba(var(--red-rgb), 0.15);
 }
 
 .drop-zone::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, transparent 0%, rgba(255, 255, 255, 0.05) 45%, rgba(255, 255, 255, 0.05) 55%, transparent 100%);
+  background: linear-gradient(180deg, transparent 0%, rgba(var(--red-rgb), 0.06) 45%, rgba(var(--red-rgb), 0.06) 55%, transparent 100%);
   transform: translateY(-100%);
   animation: idleScan 5s ease-in-out infinite;
   animation-delay: 1.2s;
@@ -194,15 +203,11 @@ body {
   100% { opacity: 0; transform: translateY(100%); }
 }
 
-.drop-zone:hover {
-  box-shadow: -3px 0 0 rgba(255, 0, 60, 0.2), 3px 0 0 rgba(0, 200, 255, 0.2);
-}
-
 .drop-zone.dragging {
-  border-color: #ffffff;
+  border-color: var(--red);
   border-style: solid;
   animation: dropShake 0.25s linear infinite;
-  box-shadow: -4px 0 0 rgba(255, 0, 60, 0.4), 4px 0 0 rgba(0, 200, 255, 0.4);
+  box-shadow: 0 0 0 2px rgba(var(--red-rgb), 0.3), 0 0 32px rgba(var(--red-rgb), 0.35);
 }
 
 @keyframes dropShake {
@@ -218,7 +223,7 @@ body {
   position: absolute;
   width: 22px;
   height: 22px;
-  border: 2px solid rgba(255, 255, 255, 0.5);
+  border: 2px solid rgba(255, 255, 255, 0.4);
   transition: border-color 0.2s, filter 0.2s;
   pointer-events: none;
 }
@@ -230,8 +235,8 @@ body {
 
 .drop-zone:hover .corner,
 .drop-zone.dragging .corner {
-  border-color: #ffffff;
-  filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.5));
+  border-color: var(--red);
+  filter: drop-shadow(0 0 6px rgba(var(--red-rgb), 0.6));
 }
 
 .drop-main {
@@ -245,12 +250,7 @@ body {
   margin-top: 1.1rem;
   font-size: 0.68rem;
   letter-spacing: 0.3em;
-  color: #666666;
-}
-
-.drop-zone.has-preview {
-  border-style: solid;
-  border-color: #555555;
+  color: rgba(var(--red-rgb), 0.65);
 }
 
 .drop-hint {
@@ -259,8 +259,9 @@ body {
 }
 
 .drop-icon {
-  font-size: 2.5rem;
-  display: block;
+  display: flex;
+  justify-content: center;
+  color: var(--text-muted);
   margin-bottom: 0.75rem;
 }
 
@@ -269,99 +270,23 @@ body {
   margin-top: 0.4rem;
 }
 
-.preview-img {
-  width: 100%;
-  height: 100%;
-  max-height: 400px;
-  object-fit: contain;
-}
-
-.prompt-row {
-  display: flex;
-  gap: 0.75rem;
-}
-
-.prompt-input {
-  flex: 1;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  color: var(--text);
-  font-family: inherit;
-  font-size: 0.9rem;
-  padding: 0.75rem 1rem;
-  outline: none;
-  transition: border-color 0.2s;
-}
-
-.prompt-input:focus {
-  border-color: #555555;
-}
-
-.prompt-input::placeholder {
-  color: var(--text-muted);
-}
-
-.submit-btn {
-  background: #333333;
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  font-family: inherit;
-  font-weight: 700;
-  font-size: 0.8rem;
-  padding: 0.75rem 0.75rem;
-  width: 48px;
-  flex-shrink: 0;
-  cursor: pointer;
-  letter-spacing: 0.05em;
-  white-space: nowrap;
-  transition: background 0.2s, border-color 0.2s;
-}
-
-.submit-btn:hover {
-  background: #444444;
-  border-color: var(--accent);
-}
-
-.submit-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-/* ── Status Panel ── */
-.status-panel {
+/* ── Glitch Workspace (canvas stacked over the mod deck) ── */
+.glitch-workspace {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 1.5rem;
-  padding: 2rem 0;
+  gap: 1.25rem;
 }
 
-.status-text {
-  color: var(--text-muted);
-}
-
-.status-badge {
-  font-size: 1.1rem;
-  padding: 0.6rem 1.5rem;
-  border-radius: 999px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-}
-
-.status-pending   { background: #1a1a1a; color: var(--text-muted); }
-.status-processing { background: #1a1a1a; color: var(--text); border: 1px solid var(--accent); }
-.status-completed  { background: #1a1a1a; color: var(--text); }
-.status-failed     { background: #1a1a1a; color: #888888; border: 1px solid #555555; }
-
-/* ── Result ── */
-.result {
+/* ── Console Display (screen bezel around the canvas) ── */
+/* Thin viewfinder frame around the canvas, not a moulded bezel */
+.console-display {
+  background: #050505;
+  border: 1px solid #262626;
+  border-radius: 2px;
+  padding: 0.8rem;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-  width: 100%;
+  gap: 0.7rem;
 }
 
 .result-img {
@@ -369,28 +294,29 @@ body {
   border: 1px solid var(--border);
 }
 
-.result-actions {
+/* ── Canvas Wrapper + Fullscreen ── */
+.canvas-wrapper {
+  position: relative;
+  overflow: hidden;
   display: flex;
-  gap: 1rem;
+  justify-content: center;
 }
 
-.download-btn {
-  background: #333333;
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  font-family: inherit;
-  font-weight: 700;
-  font-size: 0.9rem;
-  padding: 0.6rem 1.25rem;
-  text-decoration: none;
-  cursor: pointer;
-  transition: background 0.2s, border-color 0.2s;
+/* size to the canvas's own aspect ratio — no letterbox bars */
+.canvas-wrapper canvas {
+  max-width: 100%;
+  max-height: 58vh;
+  width: auto;
+  height: auto;
+  display: block;
+  border-radius: 4px;
 }
 
-.download-btn:hover {
-  background: #444444;
-  border-color: var(--accent);
+/* ── Transport (inside the display) ── */
+.transport {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .download-wrap {
@@ -430,119 +356,26 @@ body {
   background: #333;
 }
 
-.download-btn.recording {
-  animation: pulse 1.2s ease-in-out infinite;
+.console-btn.primary {
+  border-color: rgba(var(--red-rgb), 0.5);
+  color: #ffffff;
 }
 
-.record-btn {
-  background: #333333;
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  font-family: inherit;
-  font-weight: 700;
-  font-size: 0.9rem;
-  padding: 0.6rem 1.25rem;
-  cursor: pointer;
-  transition: background 0.2s, border-color 0.2s;
+.console-btn.primary:hover {
+  border-color: var(--red);
+  box-shadow: 0 0 10px rgba(var(--red-rgb), 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
-.record-btn:hover {
-  background: #444444;
-  border-color: var(--accent);
-}
-
-.record-btn.recording {
-  border-color: #888;
-  color: #ccc;
+.console-btn.recording {
+  border-color: var(--red);
+  color: #ffffff;
+  box-shadow: 0 0 10px rgba(var(--red-rgb), 0.4);
   animation: pulse 1.2s ease-in-out infinite;
 }
 
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
-}
-
-.reset-btn {
-  background: transparent;
-  color: var(--text-muted);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  font-family: inherit;
-  font-size: 0.9rem;
-  padding: 0.6rem 1.25rem;
-  cursor: pointer;
-  transition: border-color 0.2s, color 0.2s;
-}
-
-.reset-btn:hover {
-  border-color: var(--text);
-  color: var(--text);
-}
-
-/* ── Error ── */
-.error-msg {
-  color: var(--accent2);
-  font-size: 0.85rem;
-}
-
-/* ── Glitch Workspace (canvas stacked over the mod deck) ── */
-.glitch-workspace {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-}
-
-/* ── Console Display (screen bezel around the canvas) ── */
-.console-display {
-  background: #050505;
-  border: 1px solid #202020;
-  border-radius: 8px;
-  padding: 0.8rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.7rem;
-  box-shadow: inset 0 2px 12px rgba(0, 0, 0, 0.7);
-}
-
-/* ── Canvas Wrapper + Fullscreen ── */
-.canvas-wrapper {
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  justify-content: center;
-}
-
-/* size to the canvas's own aspect ratio — no letterbox bars */
-.canvas-wrapper canvas {
-  max-width: 100%;
-  max-height: 58vh;
-  width: auto;
-  height: auto;
-  display: block;
-  border-radius: 4px;
-}
-
-/* ── Transport (inside the display) ── */
-.transport {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.console-btn.primary {
-  border-color: rgba(0, 200, 255, 0.45);
-  color: #ffffff;
-}
-
-.console-btn.primary:hover {
-  border-color: #00c8ff;
-  box-shadow: 0 0 10px rgba(0, 200, 255, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.04);
-}
-
-.console-btn.recording {
-  border-color: #ff3d78;
-  animation: pulse 1.2s ease-in-out infinite;
 }
 
 .fullscreen-btn {
@@ -591,47 +424,36 @@ body {
 
 /* ── Mod Console ───────────────────────────────────────────────────────────
    Hardware-rack control surface: rotary knobs grouped into three labeled
-   sections, corner screws, preset chips along the header rail.
-   Category colors: tone = amber, warp = cyan, corrupt = magenta. */
+   sections, corner screws, preset chips along the header rail. Everything
+   that lights up does so in the same red, the section labels (Tone / Warp /
+   Corrupt) are what carry the category, not a different colour per section. */
+/* No hardware-panel gradient or screws here — this reads as a scope
+   readout, not a piece of physical gear: a flat dark field, a hairline
+   border, and open corner brackets marking it like a targeting frame. */
 .mod-console {
   position: relative;
-  background: linear-gradient(180deg, #141414 0%, #0c0c0c 55%, #090909 100%);
-  border: 1px solid #2e2e2e;
-  border-radius: 10px;
+  background: #060606;
+  border: 1px solid #262626;
+  border-radius: 3px;
   padding: 1.4rem 1.6rem 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 1.1rem;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    0 12px 30px rgba(0, 0, 0, 0.6);
+  font-family: var(--font-mono);
 }
 
-/* corner screws */
 .screw {
   position: absolute;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #3d3d3d, #161616 70%);
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.8), 0 1px 0 rgba(255, 255, 255, 0.06);
+  width: 14px;
+  height: 14px;
+  border: 1px solid rgba(var(--red-rgb), 0.5);
+  pointer-events: none;
 }
 
-.screw::after {
-  content: '';
-  position: absolute;
-  left: 1.5px;
-  right: 1.5px;
-  top: 50%;
-  height: 1px;
-  background: rgba(0, 0, 0, 0.75);
-  transform: rotate(-40deg);
-}
-
-.s-tl { top: 9px; left: 9px; }
-.s-tr { top: 9px; right: 9px; }
-.s-bl { bottom: 9px; left: 9px; }
-.s-br { bottom: 9px; right: 9px; }
+.s-tl { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+.s-tr { top: -1px; right: -1px; border-left: none; border-bottom: none; }
+.s-bl { bottom: -1px; left: -1px; border-right: none; border-top: none; }
+.s-br { bottom: -1px; right: -1px; border-left: none; border-top: none; }
 
 /* ── Header rail ── */
 .console-header {
@@ -646,7 +468,7 @@ body {
 .console-title {
   font-size: 0.64rem;
   letter-spacing: 0.22em;
-  color: #777777;
+  color: rgba(var(--red-rgb), 0.75);
   text-transform: uppercase;
   white-space: nowrap;
   flex-shrink: 0;
@@ -654,32 +476,40 @@ body {
 
 .console-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.4rem;
   margin-left: auto;
 }
 
+/* Buttons read as bracketed line-art rather than filled pills — no fill,
+   a hairline border, the label framed in literal brackets like a readout
+   label ([ RANDOM ]) instead of a UI chrome affordance. */
 .console-btn {
-  background: #161616;
+  background: transparent;
   color: var(--text-muted);
-  border: 1px solid #2e2e2e;
-  border-radius: 5px;
-  font-family: inherit;
+  border: 1px solid #2a2a2a;
+  border-radius: 2px;
+  font-family: var(--font-mono);
   font-size: 0.66rem;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  padding: 0.4rem 0.8rem;
+  padding: 0.4rem 0.7rem;
   cursor: pointer;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 2px 4px rgba(0, 0, 0, 0.4);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
   transition: border-color 0.15s, color 0.15s;
 }
 
+.console-btn::before { content: '['; opacity: 0.5; }
+.console-btn::after { content: ']'; opacity: 0.5; }
+
 .console-btn:hover {
-  border-color: #555555;
+  border-color: rgba(var(--red-rgb), 0.6);
   color: var(--text);
 }
 
 .console-btn:active {
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
   transform: translateY(1px);
 }
 
@@ -699,19 +529,21 @@ body {
 }
 
 .chip {
-  background: #101010;
+  background: transparent;
   color: var(--text-muted);
-  border: 1px solid #2a2a2a;
-  border-radius: 4px;
-  font-family: inherit;
+  border: 1px solid #262626;
+  border-radius: 2px;
+  font-family: var(--font-mono);
   font-size: 0.62rem;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  padding: 0.32rem 0.7rem;
+  padding: 0.32rem 0.65rem;
   cursor: pointer;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
   transition: border-color 0.15s, color 0.15s, box-shadow 0.15s;
 }
+
+.chip::before { content: '['; opacity: 0.4; margin-right: 0.35em; }
+.chip::after { content: ']'; opacity: 0.4; margin-left: 0.35em; }
 
 .chip:hover {
   border-color: #555555;
@@ -720,8 +552,14 @@ body {
 
 .chip.active {
   color: #fff;
-  border-color: #00c8ff;
-  box-shadow: 0 0 8px rgba(0, 200, 255, 0.3), inset 0 0 6px rgba(0, 200, 255, 0.12);
+  border-color: var(--red);
+  box-shadow: 0 0 8px rgba(var(--red-rgb), 0.3);
+}
+
+.chip.active::before,
+.chip.active::after {
+  opacity: 1;
+  color: var(--red);
 }
 
 /* ── Console body: three sections ── */
@@ -750,6 +588,19 @@ body {
     border-top: 1px solid #232323;
     padding-top: 1rem;
   }
+
+  /* On a narrow screen the knob sections run on well past one screen's
+     height. Pin the preview + transport at the top so turning a knob is
+     still visible without scrolling back up to look at it. */
+  .console-display {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+  }
+
+  .canvas-wrapper canvas {
+    max-height: 34vh;
+  }
 }
 
 .console-section-title {
@@ -757,13 +608,9 @@ body {
   font-weight: 400;
   letter-spacing: 0.28em;
   text-transform: uppercase;
-  color: #666666;
+  color: rgba(var(--red-rgb), 0.7);
   margin-bottom: 0.9rem;
 }
-
-.sec-tone .console-section-title    { color: rgba(224, 160, 48, 0.8); }
-.sec-warp .console-section-title     { color: rgba(0, 200, 255, 0.8); }
-.sec-corrupt .console-section-title  { color: rgba(255, 61, 120, 0.8); }
 
 /* ── Knobs ── */
 .knob-row {
@@ -791,13 +638,13 @@ body {
 
 /* Keyboard focus needs to be visible — the dial is a real slider now */
 .knob-dial:focus-visible {
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.55);
+  box-shadow: 0 0 0 2px rgba(var(--red-rgb), 0.6);
 }
 
 /* Centre detent on bipolar knobs, so the zero position is findable by eye */
 .knob-detent {
   stroke: #555555;
-  stroke-width: 1.5;
+  stroke-width: 1.2;
   stroke-linecap: round;
 }
 
@@ -807,36 +654,42 @@ body {
   overflow: visible;
 }
 
+/* Static calibration marks around the bezel — a scope's graduation ring,
+   not tied to the knob's own step size */
+.knob-tick {
+  stroke: #333333;
+  stroke-width: 1;
+}
+
 .knob-track {
   stroke: #262626;
-  stroke-width: 4;
+  stroke-width: 1.5;
   stroke-linecap: round;
 }
 
 .knob-value-arc {
   stroke: #888888;
-  stroke-width: 4;
+  stroke-width: 2;
   stroke-linecap: round;
 }
 
-.knob-cap {
-  fill: #1b1b1b;
-}
-
-.knob-cap-rim {
-  stroke: #333333;
+/* Open pivot instead of a filled cap — the dial reads as a gauge with a
+   needle, not a physical knob with a cap sitting on top of it */
+.knob-pivot {
+  fill: none;
+  stroke: #3a3a3a;
   stroke-width: 1;
 }
 
 .knob-indicator {
-  stroke: #aaaaaa;
-  stroke-width: 2.5;
+  stroke: #999999;
+  stroke-width: 1.5;
   stroke-linecap: round;
 }
 
 .knob-label {
   margin-top: 0.35rem;
-  font-size: 0.6rem;
+  font-size: 0.58rem;
   letter-spacing: 0.05em;
   color: var(--text-muted);
   text-align: center;
@@ -861,14 +714,21 @@ body {
   width: 48px;
 }
 
-/* category coloring — lights up when the knob leaves zero */
-.cat-tone.active .knob-value-arc      { stroke: #e0a030; filter: drop-shadow(0 0 3px rgba(224, 160, 48, 0.7)); }
-.cat-warp.active .knob-value-arc       { stroke: #00c8ff; filter: drop-shadow(0 0 3px rgba(0, 200, 255, 0.7)); }
-.cat-corrupt.active .knob-value-arc    { stroke: #ff3d78; filter: drop-shadow(0 0 3px rgba(255, 61, 120, 0.7)); }
+/* category coloring — every category lights up the same red when the knob
+   leaves zero; the section header text is what tells tone/warp/corrupt apart */
+.knob-unit.active .knob-value-arc {
+  stroke: var(--red);
+  filter: drop-shadow(0 0 3px rgba(var(--red-rgb), 0.7));
+}
 
-.cat-tone.active .knob-indicator      { stroke: #e0a030; }
-.cat-warp.active .knob-indicator       { stroke: #00c8ff; }
-.cat-corrupt.active .knob-indicator    { stroke: #ff3d78; }
+.knob-unit.active .knob-indicator {
+  stroke: var(--red);
+  filter: drop-shadow(0 0 2px rgba(var(--red-rgb), 0.6));
+}
+
+.knob-unit.active .knob-pivot {
+  stroke: var(--red);
+}
 
 .knob-unit.active .knob-label,
 .knob-unit.active .knob-value {
@@ -928,31 +788,12 @@ body {
 }
 
 .toggle input:checked + .toggle-track {
-  background: #555555;
+  background: rgba(var(--red-rgb), 0.5);
 }
 
 .toggle input:checked + .toggle-track::after {
   transform: translateX(16px);
-  background: #cccccc;
-}
-
-/* ── Ghost Button ── */
-.ghost-btn {
-  background: transparent;
-  color: var(--text-muted);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  font-family: inherit;
-  font-size: 0.8rem;
-  padding: 0.5rem 1rem;
-  cursor: pointer;
-  width: 100%;
-  transition: border-color 0.2s, color 0.2s;
-}
-
-.ghost-btn:hover {
-  border-color: var(--accent);
-  color: var(--text);
+  background: #ffffff;
 }
 
 /* ── Glitch Backdrop (landing screen only) ── */
@@ -971,20 +812,10 @@ body {
   z-index: 1;
 }
 
-/* occasional whole-page jump on the landing screen */
-.app.landing {
-  animation: pageJump 9s steps(1) infinite;
-}
-
-@keyframes pageJump {
-  0%, 100% { transform: translate(0, 0) skewX(0deg); }
-  96.0% { transform: translate(0, 0) skewX(0deg); }
-  96.5% { transform: translate(-4px, 2px) skewX(-1.5deg); }
-  97.0% { transform: translate(3px, -1px) skewX(1deg); }
-  97.5% { transform: translate(0, 0) skewX(0deg); }
-}
-
 /* ── CRT Overlay ── */
+/* A dark red vignette instead of a neutral black one, so the whole frame
+   reads with a faint red cast at the edges, like it's being viewed through
+   something rather than just sitting on a plain dark background. */
 .crt-overlay {
   position: fixed;
   inset: 0;
@@ -992,7 +823,7 @@ body {
   z-index: 40;
   background:
     repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.22) 0 1px, transparent 1px 3px),
-    radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.5) 100%);
+    radial-gradient(ellipse at center, transparent 55%, rgba(30, 0, 0, 0.55) 100%);
   animation: crtFlicker 4s infinite;
 }
 
@@ -1012,7 +843,8 @@ body {
   gap: 0.5rem;
   font-size: 0.68rem;
   letter-spacing: 0.22em;
-  color: rgba(255, 255, 255, 0.55);
+  color: rgba(var(--red-rgb), 0.8);
+  text-shadow: 0 0 6px rgba(var(--red-rgb), 0.35);
   font-variant-numeric: tabular-nums;
   pointer-events: none;
   text-transform: uppercase;
@@ -1036,7 +868,6 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .app-header,
   .app-header::after,
-  .app.landing,
   .upload-form,
   .drop-zone::before,
   .drop-zone.dragging,
@@ -1057,5 +888,67 @@ body {
 
   .noise-bg {
     display: none;
+  }
+}
+
+/* ── Easter egg ── */
+.egg-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.5);
+  animation: eggFade 2.6s ease-in-out both;
+}
+
+.egg-box {
+  position: relative;
+  padding: 1.6rem 2.6rem;
+  border: 1px solid var(--red);
+  background: #060606;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  animation: eggGlitchIn 0.4s steps(3) both;
+}
+
+.egg-line {
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--red);
+  text-shadow: 0 0 12px rgba(var(--red-rgb), 0.7);
+}
+
+.egg-sub {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.3em;
+  color: var(--text-muted);
+}
+
+@keyframes eggFade {
+  0%   { opacity: 0; }
+  8%   { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes eggGlitchIn {
+  0%   { transform: translate(-3px, 2px); }
+  33%  { transform: translate(3px, -1px); }
+  66%  { transform: translate(-1px, 1px); }
+  100% { transform: translate(0, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .egg-overlay,
+  .egg-box {
+    animation: none;
   }
 }
