@@ -1,0 +1,13 @@
+# Cloudflare Pages reads this from the build output root.
+# Vite copies everything in public/ to dist/, so this lands in the right place.
+
+# Vite fingerprints filenames in assets/, so these can be cached forever.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: SAMEORIGIN
+  # The webcam source needs same-origin camera access; nothing else is used.
+  Permissions-Policy: camera=(self), microphone=(), geolocation=(), interest-cohort=()

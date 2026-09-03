@@ -3,10 +3,24 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Static Grind</title>
+    <title>Static Grind — browser glitch art tool</title>
+    <meta name="description" content="A free, browser-based glitch art tool. Drop in an image, video or your webcam, mangle it with real-time GPU and CPU effects, and export a PNG, WebM or MP4. Nothing is uploaded — it all runs on your machine." />
+    <meta name="theme-color" content="#0a0a0a" />
+    <link rel="icon" type="image/png" href="/logo_mark.png" />
+    <link rel="apple-touch-icon" href="/logo_mark.png" />
+
+    <!-- Link preview, for when this gets shared or sits on a CV -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Static Grind — browser glitch art tool" />
+    <meta property="og:description" content="Real-time glitch art in the browser. WebGL shaders and CPU pixel-sorting, no server, no upload." />
+    <meta property="og:image" content="/logo_mark.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Static Grind — browser glitch art tool" />
+    <meta name="twitter:description" content="Real-time glitch art in the browser. WebGL shaders and CPU pixel-sorting, no server, no upload." />
   </head>
   <body>
     <div id="root"></div>
+    <noscript>Static Grind renders entirely in the browser and needs JavaScript enabled.</noscript>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

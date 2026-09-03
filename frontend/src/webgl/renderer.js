@@ -30,6 +30,11 @@ uniform float u_displace;
 uniform float u_feedback;
 uniform float u_scanlines;
 
+// Every pixel-denominated parameter is authored against a 1000px-wide frame and
+// then scaled to the real canvas. Without this a 12px chroma shift is a shout on
+// a 600px thumbnail and invisible on a 4000px photo.
+const float REF_WIDTH = 1000.0;
+
 float hash(vec2 p) {
   p = fract(p * vec2(127.1, 311.7));
   p += dot(p, p + 17.5);
@@ -53,17 +58,21 @@ vec3 hsv2rgb(vec3 c) {
 void main() {
   vec2 uv = v_uv;
   vec2 px = 1.0 / u_res;
+  float rscale = u_res.x / REF_WIDTH;
+  vec2 spx = px * rscale;          // one "reference pixel", in UV units
 
-  // Wave Warp — static sinusoidal horizontal distortion
+  // Wave Warp — two harmonics so the distortion reads as a warped signal rather
+  // than a clean lens bulge
   if (u_waveWarp > 0.0) {
-    uv.x += sin(uv.y * 25.0) * u_waveWarp * px.x;
+    float w = sin(uv.y * 25.0) * 0.75 + sin(uv.y * 61.0 + 1.7) * 0.25;
+    uv.x += w * u_waveWarp * spx.x;
   }
 
   // Interlace — alternate-row horizontal shift
   if (u_interlace > 0.0) {
     float row = floor(v_uv.y * u_res.y);
     float dir = mod(row, 2.0) * 2.0 - 1.0;
-    float amt = hash1(floor(row / 2.0) + u_seed * 99.1) * u_interlace * px.x;
+    float amt = hash1(floor(row / 2.0) + u_seed * 99.1) * u_interlace * spx.x;
     uv.x += dir * amt;
   }
 
@@ -71,7 +80,7 @@ void main() {
   if (u_displace > 0.0) {
     float n1 = hash(uv * 5.1 + vec2(u_seed + 0.1));
     float n2 = hash(uv * 5.1 + vec2(u_seed + 1.1));
-    uv += (vec2(n1, n2) - 0.5) * 2.0 * u_displace * px;
+    uv += (vec2(n1, n2) - 0.5) * 2.0 * u_displace * spx;
   }
 
   uv = clamp(uv, 0.0, 1.0);
@@ -79,7 +88,7 @@ void main() {
   // Chroma Shift — RGB channel lateral separation
   vec4 c;
   if (u_chromaShift > 0.0) {
-    float sh = u_chromaShift * px.x;
+    float sh = u_chromaShift * spx.x;
     float r = texture2D(u_tex, clamp(uv + vec2(sh,  0.0), 0.0, 1.0)).r;
     float g = texture2D(u_tex, uv).g;
     float b = texture2D(u_tex, clamp(uv - vec2(sh,  0.0), 0.0, 1.0)).b;
@@ -88,16 +97,24 @@ void main() {
     c = texture2D(u_tex, uv);
   }
 
-  // Bit Crush — colour quantisation
+  // Bit Crush — exponential in bit depth, not linear in level count. Linear
+  // interpolation from 255 levels spends the whole first half of the knob
+  // between 255 and 128 levels, which no eye can tell apart.
+  // 0 -> 8 bits (identity) · 0.5 -> ~4.5 bits · 1.0 -> 1 bit
   if (u_bitCrush > 0.0) {
-    float levels = mix(255.0, 2.0, u_bitCrush);
+    float levels = exp2(mix(8.0, 1.0, u_bitCrush));
     c.rgb = floor(c.rgb * levels + 0.5) / levels;
   }
 
-  // Noise — per-pixel grain
+  // Noise — eased so the bottom half is usable grain. Straight linear amplitude
+  // is already full static by 50%, which wastes the top half of the travel.
   if (u_noise > 0.0) {
-    float n = hash(v_uv + vec2(u_seed * 0.37, u_seed * 1.13)) * 2.0 - 1.0;
-    c.rgb += vec3(n) * u_noise;
+    float amt = u_noise * (0.15 + 0.85 * u_noise);
+    float nr = hash(v_uv + vec2(u_seed * 0.37, u_seed * 1.13)) * 2.0 - 1.0;
+    float ng = hash(v_uv + vec2(u_seed * 2.11, u_seed * 0.53)) * 2.0 - 1.0;
+    float nb = hash(v_uv + vec2(u_seed * 1.77, u_seed * 3.19)) * 2.0 - 1.0;
+    // mostly luma grain with a little chroma speckle, like tape noise
+    c.rgb += mix(vec3(ng), vec3(nr, ng, nb), 0.4) * amt;
   }
 
   // Hue Shift
@@ -131,29 +148,35 @@ void main() {
     c.rgb = vec3(luma);
   }
 
-  // Saturation — push color away from (0) or keep at (1+) grayscale luma
-  if (u_saturation > 0.0) {
+  // Saturation — bipolar. -100% is fully grey, +100% is a hard push. The old
+  // one-sided version could only ever add, so half a knob did nothing.
+  if (abs(u_saturation) > 0.001) {
     float luma = dot(c.rgb, vec3(0.299, 0.587, 0.114));
-    c.rgb = mix(vec3(luma), c.rgb, 1.0 + u_saturation * 1.6);
+    float amt = u_saturation < 0.0 ? 1.0 + u_saturation : 1.0 + u_saturation * 1.6;
+    c.rgb = clamp(mix(vec3(luma), c.rgb, amt), 0.0, 1.0);
   }
 
-  // Feedback — blend current output with previous frame texture
+  // Feedback — blend current output with previous frame texture. u_feedback
+  // arrives pre-shaped from JS (see the half-life comment where it's set) so
+  // this is already the correct per-frame blend weight, used as-is.
   if (u_feedback > 0.0) {
     vec4 prev = texture2D(u_prev, v_uv);
-    c.rgb = mix(c.rgb, prev.rgb, u_feedback * 0.9);
+    c.rgb = mix(c.rgb, prev.rgb, u_feedback);
   }
 
-  // Scanlines
+  // Scanlines — fixed pitch in reference space (a band every ~3 reference rows).
+  // Keying the frequency to the raw pixel height put one line on every physical
+  // row, which aliases into moire the moment the canvas is scaled to fit.
   if (u_scanlines > 0.0) {
-    float line = sin(v_uv.y * u_res.y * 3.14159265);
-    c.rgb *= mix(1.0, max(line, 0.0) * 0.8 + 0.2, u_scanlines);
+    float rows = max(1.0, u_res.y / rscale / 3.0);
+    float line = 0.5 + 0.5 * sin(v_uv.y * rows * 6.28318531);
+    c.rgb *= mix(1.0, 0.2 + 0.8 * line, u_scanlines);
   }
 
-  // Vignette — darken toward the frame edges
+  // Vignette — reaches true black in the corners at 100%
   if (u_vignette > 0.0) {
-    vec2 vc = v_uv - 0.5;
-    float dist = length(vc) * 1.4142136;
-    float falloff = smoothstep(0.25, 1.1, dist);
+    float dist = length(v_uv - 0.5) * 1.4142136;
+    float falloff = smoothstep(0.2, 0.98, dist);
     c.rgb *= 1.0 - falloff * u_vignette;
   }
 
@@ -197,6 +220,31 @@ function makeTex(gl) {
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
   return t
+}
+
+/**
+ * Feedback isn't a "how much" knob, it's a "how long" knob, and those two
+ * don't map onto the shader's blend weight the same way.
+ *
+ * A per-frame blend of `w` toward the previous frame decays a trail's
+ * strength to half after roughly log(0.5) / log(w) frames. That function is
+ * flat for almost the whole 0-1 range and only takes off in the last few
+ * percent: w=0.9 half-lives in about 7 frames, w=0.99 takes about 70, and the
+ * knob used to hand the shader `feedback * 0.96` directly as w. So turning
+ * the dial from 0 to 90 barely changed the trail length at all, then the
+ * last stretch of travel took it from "gone in a blink" to "lingers for
+ * seconds", which is exactly the dead-then-a-cliff behaviour a linear dial
+ * shouldn't have.
+ *
+ * This inverts that: pick the half-life in frames as the thing that scales
+ * with the knob, then solve for the blend weight that produces it. `t` now
+ * spends its whole range doing something.
+ */
+function feedbackBlend(t) {
+  if (t <= 0) return 0
+  const MAX_HALF_LIFE_FRAMES = 40 // roughly 1.3s of trail at 30fps, at full turn
+  const halfLife = t * MAX_HALF_LIFE_FRAMES
+  return Math.pow(0.5, 1 / halfLife)
 }
 
 // ── WebGLRenderer ─────────────────────────────────────────────────────────────
@@ -324,7 +372,7 @@ export class WebGLRenderer {
     gl.uniform1f(this._u['u_waveWarp'],    p.waveWarp)
     gl.uniform1f(this._u['u_bitCrush'],    p.bitCrush)
     gl.uniform1f(this._u['u_displace'],    p.displace)
-    gl.uniform1f(this._u['u_feedback'],    p.feedback)
+    gl.uniform1f(this._u['u_feedback'],    feedbackBlend(p.feedback))
     gl.uniform1f(this._u['u_scanlines'],   p.scanlineIntensity)
 
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)

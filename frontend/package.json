@@ -1,12 +1,14 @@
 {
-  "name": "glitchlab-frontend",
+  "name": "staticgrind",
   "private": true,
   "version": "0.0.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "curve-check": "node scripts/curve-check.mjs",
+    "build:wasm": "cargo build --manifest-path ../wasm/Cargo.toml --release --target wasm32-unknown-unknown && wasm-bindgen --target web --out-dir wasm/pkg --out-name staticgrind_effects ../wasm/target/wasm32-unknown-unknown/release/staticgrind_effects.wasm"
   },
   "dependencies": {
     "mp4-muxer": "^5.2.2",

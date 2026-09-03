@@ -785,6 +785,20 @@ body {
   height: 56px;
   cursor: ns-resize;
   touch-action: none;
+  border-radius: 50%;
+  outline: none;
+}
+
+/* Keyboard focus needs to be visible — the dial is a real slider now */
+.knob-dial:focus-visible {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.55);
+}
+
+/* Centre detent on bipolar knobs, so the zero position is findable by eye */
+.knob-detent {
+  stroke: #555555;
+  stroke-width: 1.5;
+  stroke-linecap: round;
 }
 
 .knob-svg {
