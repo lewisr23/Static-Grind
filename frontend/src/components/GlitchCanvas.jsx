@@ -113,6 +113,34 @@ const MOD_CONFIG = [
 // anything actually changed since the last drawn frame.
 const PARAM_KEYS = ['colorGrade', ...MOD_CONFIG.map(c => c.key)]
 
+/**
+ * Gets a generated file onto the user's device. `<a download>` is what desktop
+ * browsers want, but iOS Safari doesn't reliably honour it, especially for
+ * video: the tab just sits there with nothing visibly happening, which is
+ * exactly the "did it even work?" experience this replaces. The share sheet
+ * (Save Video / Save Image / Save to Files) is the path iOS actually supports
+ * for getting a blob a page generated onto the device, so that's tried first
+ * wherever the browser claims to support sharing this file, and only falls
+ * back to the plain download link where it doesn't.
+ */
+async function saveFile(blob, filename, mimeType) {
+  const file = new File([blob], filename, { type: mimeType })
+  if (navigator.canShare?.({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file] })
+      return
+    } catch (err) {
+      if (err.name === 'AbortError') return // user dismissed the share sheet
+      console.warn('Share failed, falling back to direct download:', err)
+    }
+  }
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.download = filename
+  a.href = url
+  a.click()
+  URL.revokeObjectURL(url)
+}
 
 export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
   // Two canvases: WebGL renders offscreen, 2D canvas is visible + handles CPU effects
@@ -372,10 +400,9 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
   }
 
   function handleDownload() {
-    const link = document.createElement('a')
-    link.download = 'staticgrind-output.png'
-    link.href = canvasRef.current.toDataURL()
-    link.click()
+    canvasRef.current?.toBlob(blob => {
+      if (blob) saveFile(blob, 'staticgrind-output.png', 'image/png')
+    }, 'image/png')
   }
 
   // Grabs whatever's currently on the visible canvas (post-WebGL, post-CPU
@@ -384,10 +411,9 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
   function handleSnapshot() {
     const canvas = canvasRef.current
     if (!canvas) return
-    const link = document.createElement('a')
-    link.download = `staticgrind-snapshot-${Date.now()}.png`
-    link.href = canvas.toDataURL('image/png')
-    link.click()
+    canvas.toBlob(blob => {
+      if (blob) saveFile(blob, `staticgrind-snapshot-${Date.now()}.png`, 'image/png')
+    }, 'image/png')
   }
 
   function togglePlay() {
@@ -412,10 +438,7 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
     recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data) }
     recorder.onstop = () => {
       const blob = new Blob(chunks, { type: 'video/webm' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.download = 'staticgrind-output.webm'; a.href = url; a.click()
-      URL.revokeObjectURL(url)
+      saveFile(blob, 'staticgrind-output.webm', 'video/webm')
     }
     recorder.start()
     recorderRef.current = recorder
@@ -506,10 +529,7 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
     mp4MuxerRef.current.finalize()
     const { buffer } = mp4TargetRef.current
     const blob = new Blob([buffer], { type: 'video/mp4' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.download = 'staticgrind-output.mp4'; a.href = url; a.click()
-    URL.revokeObjectURL(url)
+    saveFile(blob, 'staticgrind-output.mp4', 'video/mp4')
   }
 
   return (
