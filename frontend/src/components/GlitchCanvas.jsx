@@ -123,6 +123,18 @@ const PARAM_KEYS = ['colorGrade', ...MOD_CONFIG.map(c => c.key)]
  * wherever the browser claims to support sharing this file, and only falls
  * back to the plain download link where it doesn't.
  */
+// Every browser on iOS is WebKit under the hood, Apple requires it, so this
+// catches Chrome/Firefox/Edge on iPhone too, not just Safari by name. WebCodecs
+// there can pass every capability check (VideoEncoder exists, isConfigSupported
+// says yes, individual frames encode fine) and still fail once flush/finalize
+// runs, a real device confirmed exactly that failure mode. Feature detection
+// can't catch a break that deep in the pipeline, so this is a deliberate
+// platform check rather than the usual feature-detection-only approach: MP4
+// simply isn't offered there, only the WEBM path, which does work everywhere.
+const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+  || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+const RECORD_FORMATS = IS_IOS ? ['webm'] : ['webm', 'mp4']
+
 async function saveFile(blob, filename, mimeType) {
   const file = new File([blob], filename, { type: mimeType })
   if (navigator.canShare?.({ files: [file] })) {
@@ -660,12 +672,18 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
                   )}
                   {recording ? (
                     <button className="console-btn primary recording" onClick={handleRecordStop}>■ Stop &amp; Save</button>
+                  ) : RECORD_FORMATS.length === 1 ? (
+                    // Only one working format on this platform — recording
+                    // straight into it beats showing a dropdown with one item.
+                    <button className="console-btn primary" onClick={() => handleRecordStartWith(RECORD_FORMATS[0])}>
+                      <IconRecordDot /> Record
+                    </button>
                   ) : (
                     <>
                       <button className="console-btn primary" onClick={() => setShowFormatPicker(p => !p)}><IconRecordDot /> Record ▾</button>
                       {showFormatPicker && (
                         <div className="format-picker">
-                          {['webm', 'mp4'].map(fmt => (
+                          {RECORD_FORMATS.map(fmt => (
                             <button key={fmt} className="fmt-option" onClick={() => {
                               setExportFormat(fmt); setShowFormatPicker(false); handleRecordStartWith(fmt)
                             }}>{fmt.toUpperCase()}</button>
