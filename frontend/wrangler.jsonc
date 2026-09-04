@@ -1,0 +1,10 @@
+{
+  // Tells `npx wrangler deploy` (what the Cloudflare dashboard runs after the
+  // build) that this is a static-asset site, not a Worker script, and where
+  // to find the built files. Matches the build output from `npm run build`.
+  "name": "static-grind",
+  "compatibility_date": "2026-09-04",
+  "assets": {
+    "directory": "./dist"
+  }
+}
