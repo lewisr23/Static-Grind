@@ -10,7 +10,7 @@ Its niche next to paid tools like Photomosh: free, minimal, and built to be fun 
 
 ## How it's built
 
-React and Vite. No backend, no network round trip for any of the actual image or video processing.
+React and Vite. 
 
 The pipeline runs in three stages. A hidden WebGL canvas runs the GPU effects in one fragment shader pass: chroma shift, wave warp, noise, interlace, displace, bit crush, hue shift, colour grading, feedback through ping-pong framebuffers, scanlines, vignette, saturation. A Web Worker runs the destructive effects that reorder pixels non-locally, which a fragment shader can't do: pixel sorting (horizontal, vertical, per-channel), block glitch, row shift, smear, melt, kaleidoscope. The result lands on the visible 2D canvas, which is what gets exported.
 
