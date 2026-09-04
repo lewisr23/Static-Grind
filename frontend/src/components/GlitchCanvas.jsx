@@ -444,14 +444,35 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
     const canvas = canvasRef.current
     if (!canvas) return
     const stream = canvas.captureStream(30)
-    const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
-      ? 'video/webm;codecs=vp9' : 'video/webm'
-    const recorder = new MediaRecorder(stream, { mimeType })
+    // Safari's MediaRecorder has never supported WebM output at all - VP8/VP9
+    // decode doesn't exist anywhere in iOS, not in Safari, not in Photos, not
+    // in Files, so a WebM ever landing on that device is unplayable no matter
+    // how it gets there. What Safari's MediaRecorder does support directly is
+    // MP4/H.264, so this asks the browser what it can actually produce rather
+    // than assuming WebM and letting Safari silently do something else with it.
+    const candidates = [
+      { mimeType: 'video/webm;codecs=vp9', ext: 'webm' },
+      { mimeType: 'video/webm;codecs=vp8', ext: 'webm' },
+      { mimeType: 'video/webm', ext: 'webm' },
+      { mimeType: 'video/mp4;codecs=avc1', ext: 'mp4' },
+      { mimeType: 'video/mp4', ext: 'mp4' },
+    ]
+    const picked = candidates.find(c => MediaRecorder.isTypeSupported(c.mimeType))
+    if (!picked) {
+      alert('This browser can\'t record video.')
+      return
+    }
+    const recorder = new MediaRecorder(stream, { mimeType: picked.mimeType })
     const chunks = []
     recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data) }
     recorder.onstop = () => {
-      const blob = new Blob(chunks, { type: 'video/webm' })
-      saveFile(blob, 'staticgrind-output.webm', 'video/webm')
+      // The saved file's type and extension follow whatever was actually
+      // negotiated above, not a hardcoded guess - a real MP4 labelled .webm
+      // (or the reverse) is exactly the kind of mismatch that leaves Photos
+      // and Files unable to make sense of a file that's otherwise perfectly fine.
+      const mimeType = picked.mimeType.split(';')[0]
+      const blob = new Blob(chunks, { type: mimeType })
+      saveFile(blob, `staticgrind-output.${picked.ext}`, mimeType)
     }
     recorder.start()
     recorderRef.current = recorder
