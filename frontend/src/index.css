@@ -411,6 +411,11 @@ body {
 }
 
 .canvas-wrapper:fullscreen canvas {
+  /* the base rule's max-height: 58vh is a hard ceiling that height: 100%
+     alone can't push past, which is why fullscreen was topping out at 58%
+     of the screen with the rest of the wrapper's black showing below it */
+  max-width: none;
+  max-height: none;
   width: 100%;
   height: 100%;
   object-fit: cover;

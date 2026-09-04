@@ -173,6 +173,7 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
   const [exportFormat, setExportFormat]   = useState('webm')
   const [showFormatPicker, setShowFormatPicker] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [fullscreenSupported] = useState(() => !!document.fullscreenEnabled)
   // Seeding the destructive pass is what lets a still hold still while you dial
   // a knob in. With Math.random the block and tear placement reshuffled on every
   // single nudge, so there was no way to converge on a look.
@@ -451,24 +452,51 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
     setRecording(false)
   }
 
-  function startMp4() {
+  async function startMp4() {
     const canvas = canvasRef.current
     if (!canvas) return
-    if (!('VideoEncoder' in window)) { alert('MP4 export requires Chrome or Edge 94+'); return }
+    if (!('VideoEncoder' in window)) {
+      alert('MP4 export needs a browser with WebCodecs support (Chrome, Edge, or Safari 16.4+). Try the WEBM format instead, it works everywhere.')
+      return
+    }
+    const config = {
+      codec: 'avc1.42001f', width: canvas.width, height: canvas.height,
+      bitrate: 8_000_000, framerate: 30,
+    }
+    // isConfigSupported catches "the API exists but won't take this codec/
+    // resolution" up front — this is exactly the gap that let the record
+    // button silently do nothing on Safari before: VideoEncoder existing
+    // isn't the same as this specific config being encodable.
+    try {
+      const support = await VideoEncoder.isConfigSupported(config)
+      if (!support.supported) {
+        alert('This browser can\'t encode MP4 at this resolution. Try the WEBM format instead.')
+        return
+      }
+    } catch (err) {
+      console.warn('isConfigSupported check failed, trying anyway:', err)
+    }
+
     const target = new ArrayBufferTarget()
     const muxer = new Muxer({
       target,
       video: { codec: 'avc', width: canvas.width, height: canvas.height },
       fastStart: 'in-memory',
     })
+    let encoderBroken = false
     const encoder = new VideoEncoder({
       output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
-      error: e => console.error('MP4 encoder:', e),
+      error: e => {
+        console.error('MP4 encoder:', e)
+        encoderBroken = true
+      },
     })
-    encoder.configure({
-      codec: 'avc1.42001f', width: canvas.width, height: canvas.height,
-      bitrate: 8_000_000, framerate: 30,
-    })
+    try {
+      encoder.configure(config)
+    } catch (err) {
+      alert('MP4 encoding failed to start on this browser. Try the WEBM format instead.')
+      return
+    }
     mp4EncoderRef.current = encoder
     mp4MuxerRef.current = muxer
     mp4TargetRef.current = target
@@ -476,15 +504,34 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
     mp4ActiveRef.current = true
     setRecording(true)
     const fps = 30
+    let consecutiveFailures = 0
     const loop = () => {
       if (!mp4ActiveRef.current) return
+      if (encoderBroken) {
+        alert('MP4 recording failed partway through on this browser. Try the WEBM format instead.')
+        mp4ActiveRef.current = false
+        setRecording(false)
+        return
+      }
       const ts = Math.round((mp4FrameRef.current / fps) * 1_000_000)
       try {
         const frame = new VideoFrame(canvas, { timestamp: ts })
         encoder.encode(frame, { keyFrame: mp4FrameRef.current % 60 === 0 })
         frame.close()
         mp4FrameRef.current++
-      } catch (_) {}
+        consecutiveFailures = 0
+      } catch (err) {
+        // one bad frame isn't fatal, but a run of them means the encoder
+        // has stopped working - that used to fail totally silently
+        consecutiveFailures++
+        if (consecutiveFailures === 1) console.error('MP4 frame encode failed:', err)
+        if (consecutiveFailures >= 30) {
+          alert('MP4 recording stopped working partway through on this browser. Try the WEBM format instead.')
+          mp4ActiveRef.current = false
+          setRecording(false)
+          return
+        }
+      }
       setTimeout(loop, 1000 / fps)
     }
     loop()
@@ -524,12 +571,24 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
   }
 
   async function stopMp4() {
-    mp4ActiveRef.current = false; setRecording(false)
-    await mp4EncoderRef.current.flush()
-    mp4MuxerRef.current.finalize()
-    const { buffer } = mp4TargetRef.current
-    const blob = new Blob([buffer], { type: 'video/mp4' })
-    saveFile(blob, 'staticgrind-output.mp4', 'video/mp4')
+    mp4ActiveRef.current = false
+    // Recording state stays on through the flush/save below, rather than
+    // clearing immediately: the button used to flip back to "Record" the
+    // instant this ran, so a failure a moment later looked identical to
+    // success - nothing to tell you it hadn't actually saved anything.
+    try {
+      await mp4EncoderRef.current.flush()
+      mp4MuxerRef.current.finalize()
+      const { buffer } = mp4TargetRef.current
+      if (!buffer || buffer.byteLength === 0) throw new Error('empty output buffer')
+      const blob = new Blob([buffer], { type: 'video/mp4' })
+      await saveFile(blob, 'staticgrind-output.mp4', 'video/mp4')
+    } catch (err) {
+      console.error('MP4 finalize/save failed:', err)
+      alert('MP4 export failed on this browser. Try the WEBM format instead, it works everywhere.')
+    } finally {
+      setRecording(false)
+    }
   }
 
   return (
@@ -574,17 +633,23 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
         <div className="console-display">
           <div className="canvas-wrapper" ref={canvasWrapperRef}>
           <canvas ref={canvasRef} className="result-img" />
-          <button className="fullscreen-btn" onClick={toggleFullscreen} title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}>
-            {isFullscreen ? (
-              <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                <path d="M5 1v4H1M8 1h4v4M8 12h4V8M5 12H1V8"/>
-              </svg>
-            ) : (
-              <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                <path d="M1 5V1h4M8 1h4v4M12 8v4H8M5 12H1V8"/>
-              </svg>
-            )}
-          </button>
+          {/* iOS Safari has never implemented the Fullscreen API for anything
+              but a bare <video>, so document.fullscreenEnabled is false there
+              — a button that visibly does nothing on tap is worse than no
+              button, so it just doesn't render rather than fake support. */}
+          {fullscreenSupported && (
+            <button className="fullscreen-btn" onClick={toggleFullscreen} title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}>
+              {isFullscreen ? (
+                <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                  <path d="M5 1v4H1M8 1h4v4M8 12h4V8M5 12H1V8"/>
+                </svg>
+              ) : (
+                <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                  <path d="M1 5V1h4M8 1h4v4M12 8v4H8M5 12H1V8"/>
+                </svg>
+              )}
+            </button>
+          )}
         </div>
           <div className="transport">
             <div className="download-wrap">
