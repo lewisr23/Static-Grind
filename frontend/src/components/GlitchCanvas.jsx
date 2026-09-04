@@ -450,13 +450,24 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
     // how it gets there. What Safari's MediaRecorder does support directly is
     // MP4/H.264, so this asks the browser what it can actually produce rather
     // than assuming WebM and letting Safari silently do something else with it.
-    const candidates = [
-      { mimeType: 'video/webm;codecs=vp9', ext: 'webm' },
-      { mimeType: 'video/webm;codecs=vp8', ext: 'webm' },
-      { mimeType: 'video/webm', ext: 'webm' },
-      { mimeType: 'video/mp4;codecs=avc1', ext: 'mp4' },
-      { mimeType: 'video/mp4', ext: 'mp4' },
-    ]
+    //
+    // isTypeSupported('video/webm') itself can't be trusted to answer that on
+    // iOS: WebKit reports true for the bare 'video/webm' string (no codecs)
+    // despite having no encoder behind it, so a naive capability check still
+    // picks WebM and produces the same unplayable file. Skip WebM outright on
+    // iOS instead of asking a capability check known to lie about it there.
+    const candidates = IS_IOS
+      ? [
+          { mimeType: 'video/mp4;codecs=avc1', ext: 'mp4' },
+          { mimeType: 'video/mp4', ext: 'mp4' },
+        ]
+      : [
+          { mimeType: 'video/webm;codecs=vp9', ext: 'webm' },
+          { mimeType: 'video/webm;codecs=vp8', ext: 'webm' },
+          { mimeType: 'video/webm', ext: 'webm' },
+          { mimeType: 'video/mp4;codecs=avc1', ext: 'mp4' },
+          { mimeType: 'video/mp4', ext: 'mp4' },
+        ]
     const picked = candidates.find(c => MediaRecorder.isTypeSupported(c.mimeType))
     if (!picked) {
       alert('This browser can\'t record video.')
