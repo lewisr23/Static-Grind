@@ -851,6 +851,20 @@ body {
 }
 
 .hud-tl { top: 16px; left: 20px; }
+
+/* The one HUD corner that's a real link, not decoration - needs its own
+   pointer-events back since .hud turns that off for the other three. */
+.hud-link {
+  pointer-events: auto;
+  text-decoration: none;
+  transition: color 0.15s, text-shadow 0.15s;
+}
+
+.hud-link:hover,
+.hud-link:focus-visible {
+  color: #fff;
+  text-shadow: 0 0 8px rgba(var(--red-rgb), 0.6);
+}
 .hud-tr { top: 16px; right: 20px; }
 .hud-bl { bottom: 16px; left: 20px; }
 .hud-br { bottom: 16px; right: 20px; }

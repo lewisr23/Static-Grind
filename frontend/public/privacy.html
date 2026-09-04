@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Privacy — Static Grind</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    background: #000;
+    color: #ccc;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 5rem;
+    line-height: 1.6;
+  }
+  h1 { color: #fff; font-size: 1.5rem; margin-bottom: 0.25rem; }
+  .sub { color: #777; font-size: 0.85rem; margin-bottom: 2.5rem; }
+  h2 { color: #ff2d20; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2.5rem; margin-bottom: 0.75rem; }
+  p { margin: 0 0 1rem; }
+  a { color: #ff6b5e; }
+  code { background: #141414; padding: 0.1em 0.4em; border-radius: 3px; font-size: 0.9em; }
+  .back { display: inline-block; margin-bottom: 2rem; color: #777; text-decoration: none; font-size: 0.85rem; }
+  .back:hover { color: #fff; }
+</style>
+</head>
+<body>
+  <a class="back" href="/">&larr; back to Static Grind</a>
+  <h1>Privacy &amp; Terms</h1>
+  <p class="sub">Short version: nothing you put into this tool ever leaves your browser.</p>
+
+  <h2>Your photos, videos and webcam</h2>
+  <p>
+    Everything Static Grind does to an image, video or webcam feed happens locally, inside your
+    own browser. There is no server behind this tool that your files pass through. Loading a
+    photo, recording your webcam or exporting a result never uploads anything anywhere; it's all
+    handled by your device using <code>URL.createObjectURL</code>, <code>getUserMedia</code> and
+    canvas/WebGL rendering, all of which are local browser APIs. Close the tab and it's gone, there
+    is nothing stored anywhere else to delete.
+  </p>
+
+  <h2>Camera access</h2>
+  <p>
+    When you click "Use Camera", your browser shows its own permission prompt asking whether to
+    allow access, that's the browser's built-in consent step, not something this site adds on top.
+    If you allow it, the video feed is processed locally the same way an uploaded file is. It is
+    never recorded, transmitted or stored unless you explicitly choose to export a snapshot or
+    recording, which then saves straight to your own device.
+  </p>
+
+  <h2>Accounts, cookies and tracking</h2>
+  <p>
+    There are none. No sign-up, no login, no cookies, no analytics, no tracking scripts of any
+    kind. This page and the app itself don't set or read anything from your browser's storage.
+  </p>
+
+  <h2>Hosting</h2>
+  <p>
+    This site is hosted on Cloudflare. Like any web host, Cloudflare's infrastructure sees standard
+    technical request data as part of serving the page, things like your IP address and request
+    timestamps, the same as any website you visit. That's covered by
+    <a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener noreferrer">Cloudflare's own privacy policy</a>,
+    not something this project collects or has access to itself.
+  </p>
+
+  <h2>Using the tool</h2>
+  <p>
+    Static Grind is provided free, as-is, with no warranty of any kind. Please only process images,
+    video or audio you actually have the rights to use. You're responsible for what you choose to
+    run through it and for how you use anything it produces.
+  </p>
+
+  <p class="sub" style="margin-top:3rem;">Last updated September 2026.</p>
+</body>
+</html>

@@ -99,6 +99,9 @@ export default function App() {
         <>
           <NoiseBackground />
           <div className="crt-overlay" aria-hidden="true" />
+          <a className="hud hud-tl hud-link" href="/privacy.html">
+            PRIVACY
+          </a>
           <div className="hud hud-tr" aria-hidden="true">
             <Clock />
           </div>
