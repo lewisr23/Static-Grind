@@ -1,5 +1,7 @@
 # Static Grind
 
+**[Live demo →](https://staticgrind.com)**
+
 A free, browser-based glitch art tool. Drop in an image or video (or use your webcam), mangle it with real-time effects, and export the result as PNG, WebM or MP4. Everything runs client-side, nothing gets uploaded anywhere.
 
 ## What it does
