@@ -80,15 +80,22 @@ npm run dev
 
 ## Deploying
 
-It's a static bundle, so any static host works. This one deploys on Cloudflare Pages. Connect the repo and set:
+It's a static bundle, so any static host works. This one deploys as a Cloudflare Worker
+serving static assets, built from the repo by Workers Builds:
 
 | Setting | Value |
 | --- | --- |
-| Root directory | `frontend` |
+| Root directory | `/frontend` |
 | Build command | `npm run build` |
-| Build output directory | `dist` |
+| Deploy command | `npx wrangler deploy` |
+| Version command | `npx wrangler versions upload` |
+| Production branch | `main` |
 
-`public/_headers` sets long-lived caching on the fingerprinted assets plus a few basic security headers, and gets picked up automatically. Note the webcam source needs HTTPS, which Pages provides by default.
+`frontend/wrangler.jsonc` is what tells `wrangler deploy` this is a static-asset site rather
+than a Worker script, and points it at the `dist/` build output. `public/_headers` sets
+long-lived caching on the fingerprinted assets plus a few basic security headers, and gets
+picked up automatically. Note the webcam source needs HTTPS, which Cloudflare provides by
+default.
 
 ## Status
 
