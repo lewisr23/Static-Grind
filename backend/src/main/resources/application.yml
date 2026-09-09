@@ -1,0 +1,53 @@
+spring:
+  application:
+    name: staticgrind-api
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/staticgrind}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
+
+  jpa:
+    # Flyway owns the schema. Hibernate never touches DDL, in any profile —
+    # ddl-auto is how a stray entity rename quietly drops a production column.
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+  session:
+    store-type: jdbc
+    jdbc:
+      initialize-schema: never
+    timeout: 30d
+
+server:
+  port: ${PORT:8080}
+  servlet:
+    session:
+      cookie:
+        name: SGSESSION
+        http-only: true
+        # Off locally (plain http), on in production. The API sits on a
+        # subdomain of the app's own domain, so the cookie is same-site and
+        # Lax is enough — no SameSite=None, no third-party cookie problems.
+        secure: ${COOKIE_SECURE:false}
+        same-site: lax
+
+staticgrind:
+  # Origins allowed to send credentialed requests. Comma-separated.
+  cors-origins: ${CORS_ORIGINS:http://localhost:5173,http://127.0.0.1:5173}
+  # A cap instead of a rate limiter: enough for any real user, low enough that
+  # a scripted account cannot fill the table.
+  max-presets-per-user: 100
+
+logging:
+  level:
+    org.springframework.security: INFO

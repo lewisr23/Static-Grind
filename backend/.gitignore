@@ -1,0 +1,4 @@
+target/
+
+# Local database credentials. Never committed, never shared.
+src/main/resources/application-local.yml

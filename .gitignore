@@ -15,3 +15,6 @@ Thumbs.db
 # frontend/wasm/pkg/ (the compiled glue + .wasm binary) IS committed: it is
 # what lets the site deploy without a Rust toolchain in the build environment.
 wasm/target/
+
+# Local editor/assistant config — never belongs in the repo.
+.claude/
