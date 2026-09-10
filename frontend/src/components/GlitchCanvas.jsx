@@ -157,6 +157,10 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
   const [params, setParams]               = useState(DEFAULT_PARAMS)
   const [selectedPreset, setSelectedPreset] = useState('')
   const [saving, setSaving]               = useState(false)
+  // Narrow screens show one control group at a time under the picture so the
+  // picture and the knobs share the screen without scrolling. Ignored on wide
+  // screens, where both rails are always visible.
+  const [mobileTab, setMobileTab]         = useState('tone')
   const [saveName, setSaveName]           = useState('')
   const [saveError, setSaveError]         = useState(null)
   const [selectedSavedId, setSelectedSavedId] = useState('')
@@ -669,7 +673,7 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
   ))
 
   return (
-    <div className="glitch-workspace">
+    <div className="glitch-workspace" data-tab={mobileTab}>
       {/* Hidden WebGL canvas */}
       <canvas ref={glCanvasRef} style={{ display: 'none' }} />
 
@@ -781,6 +785,21 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
             <button className="console-btn" onClick={onReset} title="Load different media"><IconEject /> Eject</button>
           </div>
         </div>
+
+        {/* Only rendered visibly below three-column width (CSS) */}
+        <div className="mobile-tabs" role="tablist" aria-label="Control group">
+          {[['tone', 'Tone'], ['warp', 'Warp'], ['corrupt', 'Corrupt'], ['presets', 'Presets']].map(([key, label]) => (
+            <button
+              key={key}
+              role="tab"
+              aria-selected={mobileTab === key}
+              className={`chip${mobileTab === key ? ' active' : ''}`}
+              onClick={() => setMobileTab(key)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* ── Right rail: Corrupt + presets ── */}
@@ -891,18 +910,8 @@ function knobPoint(cx, cy, r, angleDeg) {
   return [cx + r * Math.sin(rad), cy - r * Math.cos(rad)]
 }
 
-function knobArc(cx, cy, r, a0, a1) {
-  // ordered, so an arc drawn backwards from a bipolar centre still renders
-  const [x0, y0] = knobPoint(cx, cy, r, Math.min(a0, a1))
-  const [x1, y1] = knobPoint(cx, cy, r, Math.max(a0, a1))
-  const large = Math.abs(a1 - a0) > 180 ? 1 : 0
-  return `M ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1}`
-}
-
-// Static calibration marks around the bezel, like the graduations on a scope
-// dial. Purely decorative — evenly spaced across the sweep, independent of
-// the knob's actual step size.
-const KNOB_TICK_ANGLES = Array.from({ length: 11 }, (_, i) => -135 + i * (KNOB_SWEEP / 10))
+// 23 segments across the 270° sweep, evenly spaced from stop to stop.
+const KNOB_SEG_ANGLES = Array.from({ length: 23 }, (_, i) => -135 + (i * KNOB_SWEEP) / 22)
 
 function Knob({ label, value, min, max, step, def = min, display, cat, onChange }) {
   const [editing, setEditing] = useState(false)
@@ -1007,33 +1016,30 @@ function Knob({ label, value, min, max, step, def = min, display, cat, onChange 
         title="Drag or scroll to turn · hold Shift for fine · double-click to reset"
       >
         <svg className="knob-svg" viewBox="0 0 64 64">
-          {/* calibration ticks — a static scope-dial bezel, not tied to value */}
-          {KNOB_TICK_ANGLES.map(a => {
-            const [x0, y0] = knobPoint(32, 32, 29, a)
-            const [x1, y1] = knobPoint(32, 32, 25.5, a)
-            return <line key={a} x1={x0} y1={y0} x2={x1} y2={y1} className="knob-tick" />
+          {/* Segment ring: a bar-graph meter wrapped around the cap. Segments
+              light from the knob's default outward, so a bipolar control fills
+              from the centre rather than always from the left stop. */}
+          {KNOB_SEG_ANGLES.map(a => {
+            const [x0, y0] = knobPoint(32, 32, 30, a)
+            const [x1, y1] = knobPoint(32, 32, 24, a)
+            const lo = Math.min(defAngle, angle) - 0.5
+            const hi = Math.max(defAngle, angle) + 0.5
+            const lit = a >= lo && a <= hi && Math.abs(angle - defAngle) > 0.5
+            return <line key={a} x1={x0} y1={y0} x2={x1} y2={y1} className={lit ? 'knob-seg lit' : 'knob-seg'} />
           })}
-          {/* track */}
-          <path d={knobArc(32, 32, 22, -135, 135)} className="knob-track" fill="none" />
-          {/* value arc — grows from the knob's default, so a bipolar control
-              reads outward from centre rather than always from the left stop */}
-          {Math.abs(angle - defAngle) > 0.5 && (
-            <path d={knobArc(32, 32, 22, defAngle, angle)} className="knob-value-arc" fill="none" />
-          )}
-          {/* centre detent marker on bipolar knobs */}
+          {/* centre detent marker on bipolar knobs, just outside the ring */}
           {bipolar && (() => {
-            const [dx0, dy0] = knobPoint(32, 32, 25, defAngle)
-            const [dx1, dy1] = knobPoint(32, 32, 18.5, defAngle)
+            const [dx0, dy0] = knobPoint(32, 32, 33, defAngle)
+            const [dx1, dy1] = knobPoint(32, 32, 31.5, defAngle)
             return <line x1={dx0} y1={dy0} x2={dx1} y2={dy1} className="knob-detent" />
           })()}
-          {/* needle — a full gauge pointer instead of a cap with a short tick */}
+          {/* the cap you'd actually grab, with a notch showing where it's turned to */}
+          <circle cx="32" cy="32" r="18" className="knob-cap" />
           {(() => {
-            const [ix0, iy0] = knobPoint(32, 32, 4, angle)
-            const [ix1, iy1] = knobPoint(32, 32, 20.5, angle)
-            return <line x1={ix0} y1={iy0} x2={ix1} y2={iy1} className="knob-indicator" />
+            const [ix0, iy0] = knobPoint(32, 32, 9, angle)
+            const [ix1, iy1] = knobPoint(32, 32, 16, angle)
+            return <line x1={ix0} y1={iy0} x2={ix1} y2={iy1} className="knob-notch" />
           })()}
-          {/* pivot — open, not a filled cap, so the dial reads as a gauge, not a knob */}
-          <circle cx="32" cy="32" r="2.4" className="knob-pivot" />
         </svg>
       </div>
       <span className="knob-label">{label}</span>

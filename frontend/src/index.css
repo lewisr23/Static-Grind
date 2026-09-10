@@ -657,11 +657,59 @@ body {
   }
 
   .canvas-wrapper canvas {
-    max-height: 34vh;
+    max-height: 38vh;
   }
 
   .knob-row {
     grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  }
+
+  /* One control group at a time, picked from the tab strip under the
+     picture. The rails dissolve and the visible section takes their panel
+     styling, so there's never an empty bordered box. */
+  .mobile-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    padding-top: 0.2rem;
+  }
+
+  .rail {
+    display: contents;
+  }
+
+  .console-section {
+    background: #060606;
+    border: 1px solid #262626;
+    border-radius: 3px;
+    padding: 1rem 0.9rem 1.1rem;
+    font-family: var(--font-mono);
+  }
+
+  .console-section + .console-section {
+    border-top: 1px solid #262626;
+    padding-top: 1rem;
+  }
+
+  .glitch-workspace[data-tab="tone"] .console-section:not(.sec-tone),
+  .glitch-workspace[data-tab="warp"] .console-section:not(.sec-warp),
+  .glitch-workspace[data-tab="corrupt"] .console-section:not(.sec-corrupt),
+  .glitch-workspace[data-tab="presets"] .console-section:not(.sec-presets):not(.sec-saved) {
+    display: none;
+  }
+
+  /* With only one group showing there's rarely anything to scroll, so the
+     display no longer needs to pin itself. */
+  .console-display {
+    position: static;
+  }
+
+}
+
+/* Wide screens: both rails are in view, so the tab strip is redundant. */
+@media (min-width: 1101px) {
+  .mobile-tabs {
+    display: none;
   }
 }
 
@@ -717,36 +765,35 @@ body {
   overflow: visible;
 }
 
-/* Static calibration marks around the bezel — a scope's graduation ring,
-   not tied to the knob's own step size */
-.knob-tick {
-  stroke: #333333;
+/* Segment ring: unlit segments are barely there, lit ones are solid red.
+   Reads like the LED ring on a MIDI controller rather than a drawn gauge. */
+.knob-seg {
+  stroke: #222222;
+  stroke-width: 2.2;
+  stroke-linecap: butt;
+  transition: stroke 0.08s;
+}
+
+.knob-seg.lit {
+  stroke: var(--red);
+}
+
+/* Solid cap with a hairline rim, a slightly lifted centre so it reads as
+   something you can grab */
+.knob-cap {
+  fill: #101010;
+  stroke: #2e2e2e;
   stroke-width: 1;
+  transition: stroke 0.15s;
 }
 
-.knob-track {
-  stroke: #262626;
-  stroke-width: 1.5;
-  stroke-linecap: round;
+.knob-dial:hover .knob-cap {
+  stroke: #4a4a4a;
 }
 
-.knob-value-arc {
-  stroke: #888888;
-  stroke-width: 2;
-  stroke-linecap: round;
-}
-
-/* Open pivot instead of a filled cap — the dial reads as a gauge with a
-   needle, not a physical knob with a cap sitting on top of it */
-.knob-pivot {
-  fill: none;
-  stroke: #3a3a3a;
-  stroke-width: 1;
-}
-
-.knob-indicator {
-  stroke: #999999;
-  stroke-width: 1.5;
+.knob-notch {
+  stroke: #8a8a8a;
+  stroke-width: 2.2;
   stroke-linecap: round;
 }
 
@@ -779,18 +826,16 @@ body {
 
 /* category coloring — every category lights up the same red when the knob
    leaves zero; the section header text is what tells tone/warp/corrupt apart */
-.knob-unit.active .knob-value-arc {
-  stroke: var(--red);
-  filter: drop-shadow(0 0 3px rgba(var(--red-rgb), 0.7));
-}
-
-.knob-unit.active .knob-indicator {
-  stroke: var(--red);
+.knob-unit.active .knob-seg.lit {
   filter: drop-shadow(0 0 2px rgba(var(--red-rgb), 0.6));
 }
 
-.knob-unit.active .knob-pivot {
-  stroke: var(--red);
+.knob-unit.active .knob-notch {
+  stroke: #ffffff;
+}
+
+.knob-unit.active .knob-cap {
+  stroke: rgba(var(--red-rgb), 0.6);
 }
 
 .knob-unit.active .knob-label,
