@@ -1260,3 +1260,16 @@ body {
   gap: 0.4em;
   flex-shrink: 0;
 }
+
+/* Reseed is inert unless one of the four RNG-driven effects is engaged, so it
+   greys out rather than sitting there accepting clicks that do nothing. The
+   title attribute says which knobs it needs. */
+.console-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.console-btn:disabled:hover {
+  border-color: #2a2a2a;
+  color: var(--text-muted);
+}

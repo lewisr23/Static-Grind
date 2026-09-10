@@ -31,37 +31,13 @@ const DEFAULT_PARAMS = {
 }
 
 const PRESETS = {
-  vhsDecay: {
-    colorGrade: 'vhs', chromaShift: 12, noise: 0.08, interlace: 6,
-    scanlineIntensity: 0.35, waveWarp: 4, hueShift: 10,
-  },
-  meltdown: {
-    melt: 0.72, smear: 0.55, blockGlitch: 0.3, noise: 0.06,
-    colorGrade: 'none', hueShift: 0, waveWarp: 8,
-  },
   glitchcore: {
     blockGlitch: 0.75, pixelSort: 0.65, chromaShift: 32, noise: 0.22,
     smear: 0.35, interlace: 14, bitCrush: 0.3, colorGrade: 'neon',
   },
-  cathedral: {
-    feedback: 0.38, colorGrade: 'neon', hueShift: 130,
-    noise: 0.04, chromaShift: 6, waveWarp: 10,
-  },
-  datamosh: {
-    smear: 0.8, interlace: 10, colorGrade: 'vhs', chromaShift: 14,
-    noise: 0.07, blockGlitch: 0.25, displace: 18,
-  },
   neonRot: {
     colorGrade: 'neon', chromaShift: 22, waveWarp: 16, hueShift: 48,
     noise: 0.1, feedback: 0.12, pixelSort: 0.3,
-  },
-  voidDrift: {
-    feedback: 0.62, displace: 45, bitCrush: 0.42, hueShift: 185,
-    colorGrade: 'grayscale', noise: 0.05, waveWarp: 6,
-  },
-  infrableed: {
-    colorGrade: 'infrared', chromaShift: 18, hueShift: 0, noise: 0.12,
-    displace: 28, pixelSort: 0.25, interlace: 4,
   },
   staticField: {
     noise: 0.45, scanlineIntensity: 0.55, interlace: 18,
@@ -74,9 +50,7 @@ const PRESETS = {
 }
 
 const PRESET_LABELS = {
-  vhsDecay: 'Vessel', meltdown: 'Tallow', glitchcore: 'Calcium', cathedral: 'Kelp',
-  datamosh: 'Silt', neonRot: 'Nerve', voidDrift: 'Marrow', infrableed: 'Amber',
-  staticField: 'Mold', prismBreak: 'Seam',
+  glitchcore: 'Calcium', neonRot: 'Nerve', staticField: 'Mold', prismBreak: 'Seam',
 }
 
 const GRADES = [
@@ -421,6 +395,14 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
     }
   }
 
+  // Only four effects draw from the seeded RNG (see applyCpuChain in
+  // effects/cpu.js): row shift, block glitch, smear and melt. Everything else
+  // is deterministic, pixel sorts included — they look random but aren't. So
+  // with none of these four engaged, reseeding changes a number nothing reads,
+  // and the button sits there looking broken. It disables itself instead.
+  const RESEEDABLE = ['rowShift', 'blockGlitch', 'smear', 'melt']
+  const canReseed = RESEEDABLE.some(key => params[key] > 0)
+
   function set(key, value) { setParams(p => ({ ...p, [key]: value })) }
 
   function handleRandomize() {
@@ -712,7 +694,16 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
           </div>
           <div className="console-actions">
             <button className="console-btn" onClick={handleRandomize}><IconShuffle /> Random</button>
-            <button className="console-btn" onClick={() => setSeed((Math.random() * 0xffffffff) >>> 0)} title="Reroll the random placement without touching the knobs"><IconDie /> Reseed</button>
+            <button
+              className="console-btn"
+              onClick={() => setSeed((Math.random() * 0xffffffff) >>> 0)}
+              disabled={!canReseed}
+              title={canReseed
+                ? 'Reroll the random placement without touching the knobs'
+                : 'Needs Row Shift, Block Glitch, Smear or Melt above zero — nothing else uses the seed'}
+            >
+              <IconDie /> Reseed
+            </button>
             <button className="console-btn" onClick={() => { setParams(DEFAULT_PARAMS); setSelectedPreset(''); setSelectedSavedId('') }}><IconUndo /> Clear</button>
             <button className="console-btn" onClick={onReset} title="Load different media"><IconEject /> Eject</button>
           </div>
