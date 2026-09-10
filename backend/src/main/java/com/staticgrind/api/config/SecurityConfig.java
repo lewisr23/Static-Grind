@@ -76,7 +76,7 @@ public class SecurityConfig {
             // The double-submit cookie is what distinguishes a request the
             // frontend actually made from one another site made on its behalf.
             .csrf(csrf -> csrf
-                    .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                    .csrfTokenRepository(csrfTokenRepository())
                     .csrfTokenRequestHandler(csrfHandler))
 
             .authorizeHttpRequests(auth -> auth
@@ -105,6 +105,21 @@ public class SecurityConfig {
             .addFilterAfter(new CsrfCookieFilter(), org.springframework.security.web.csrf.CsrfFilter.class);
 
         return http.build();
+    }
+
+    /**
+     * Deliberately not HttpOnly: the frontend has to read this value back and
+     * echo it in a header, which is the whole mechanism of a double-submit
+     * token. It is not a secret in the way the session cookie is — knowing it
+     * is useless without also being able to send the session.
+     */
+    private CookieCsrfTokenRepository csrfTokenRepository() {
+        CookieCsrfTokenRepository repository = CookieCsrfTokenRepository.withHttpOnlyFalse();
+        String domain = props.cookieDomain();
+        if (domain != null && !domain.isBlank()) {
+            repository.setCookieCustomizer(cookie -> cookie.domain(domain));
+        }
+        return repository;
     }
 
     @Bean

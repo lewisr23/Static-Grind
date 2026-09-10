@@ -95,3 +95,14 @@ export function IconUpload({ size = 40 }) {
     </svg>
   )
 }
+
+// A bookmark rather than the usual floppy disk: this saves knob positions to a
+// named slot, it doesn't write a file to disk, and the transport already has a
+// download button that does.
+export function IconSave() {
+  return (
+    <svg {...base} fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3.5 2h7v10l-3.5-2.6L3.5 12z" />
+    </svg>
+  )
+}

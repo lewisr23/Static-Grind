@@ -47,6 +47,9 @@ staticgrind:
   # A cap instead of a rate limiter: enough for any real user, low enough that
   # a scripted account cannot fill the table.
   max-presets-per-user: 100
+  # Blank locally (host-only cookie on localhost is readable by the dev server).
+  # Set to .staticgrind.com in production so the app can read a token the API set.
+  cookie-domain: ${COOKIE_DOMAIN:}
 
 logging:
   level:

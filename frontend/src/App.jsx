@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import UploadForm from './components/UploadForm'
 import GlitchCanvas from './components/GlitchCanvas'
 import NoiseBackground from './components/NoiseBackground'
+import AuthPanel from './auth/AuthPanel'
+import { useAuth } from './auth/AuthProvider'
 
 function Clock() {
   const [now, setNow] = useState(() => new Date())
@@ -88,13 +90,51 @@ function useTapTrigger(count = 5, windowMs = 1500) {
   }
 }
 
+
+/**
+ * Account state, top right. Sign-in is optional everywhere in this app, so this
+ * is a quiet strip rather than a call to action — and it says "offline" instead
+ * of an error when the API is unreachable, because nothing is actually broken
+ * when that happens.
+ */
+function AccountRail({ onOpenAuth }) {
+  const { user, status, signOut, refresh } = useAuth()
+
+  if (status === 'loading') return <div className="account-rail" aria-hidden="true" />
+
+  return (
+    <div className="account-rail">
+      {status === 'authed' && (
+        <>
+          <span className="account-name" title={user.email}>{user.displayName}</span>
+          <button className="account-btn" onClick={signOut}>Sign out</button>
+        </>
+      )}
+      {status === 'anon' && (
+        <button className="account-btn" onClick={onOpenAuth}>Sign in</button>
+      )}
+      {status === 'offline' && (
+        <button
+          className="account-btn account-offline"
+          onClick={refresh}
+          title="Saved presets are stored on this device until the server is back. Click to retry."
+        >
+          Presets offline
+        </button>
+      )}
+    </div>
+  )
+}
+
 export default function App() {
   const [source, setSource] = useState(null) // { url, type: 'image' | 'video' }
+  const [authOpen, setAuthOpen] = useState(false)
   const onLogoTap = useTapTrigger()
 
   return (
     <>
       <EasterEgg />
+      {authOpen && <AuthPanel onClose={() => setAuthOpen(false)} />}
       {!source && (
         <>
           <NoiseBackground />
@@ -115,6 +155,7 @@ export default function App() {
       )}
 
       <div className={source ? 'app' : 'app landing'}>
+        <AccountRail onOpenAuth={() => setAuthOpen(true)} />
         <header className="app-header">
           <h1 className="logo" onClick={onLogoTap}>
             <img src="/logo_mark.png" alt="" className="logo-mark" />

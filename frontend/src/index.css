@@ -971,3 +971,292 @@ body {
     animation: none;
   }
 }
+
+/* ══ Accounts & saved presets ══
+   Everything here is optional furniture around a tool that works without it,
+   so it stays quiet: hairline borders, no fills, muted until hovered. Same
+   bracketed line-art language as the console buttons. */
+
+/* ── Account rail (top right, above the header) ── */
+.account-rail {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  min-height: 1.6rem;
+  margin-bottom: -0.6rem;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.account-name {
+  color: var(--text-muted);
+  max-width: 14ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+  padding: 0.2rem 0;
+  transition: color 0.15s;
+}
+
+.account-btn::before { content: '['; opacity: 0.4; margin-right: 0.35em; }
+.account-btn::after  { content: ']'; opacity: 0.4; margin-left: 0.35em; }
+.account-btn:hover { color: var(--text); }
+
+/* Not an error state — the tool is fine, only syncing is unavailable. */
+.account-offline {
+  color: #4a4a4a;
+  cursor: help;
+}
+
+/* ── Saved preset rail ── */
+.saved-rail {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  padding: 0.75rem 0 0.15rem;
+  font-family: var(--font-mono);
+}
+
+.saved-label {
+  font-size: 0.6rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(var(--red-rgb), 0.5);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.saved-empty {
+  font-size: 0.62rem;
+  letter-spacing: 0.05em;
+  color: #3d3d3d;
+}
+
+.saved-chips { margin-bottom: 0; }
+
+/* The delete affordance overlaps the chip's right edge and only appears on
+   hover, so a row of saved presets reads as chips rather than as a row of
+   controls. */
+.saved-chip {
+  position: relative;
+  display: inline-flex;
+}
+
+.saved-del {
+  position: absolute;
+  top: -0.45rem;
+  right: -0.45rem;
+  width: 1rem;
+  height: 1rem;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  background: var(--bg);
+  color: var(--text-muted);
+  border: 1px solid #2a2a2a;
+  border-radius: 50%;
+  font-size: 0.7rem;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.saved-chip:hover .saved-del,
+.saved-del:focus-visible { opacity: 1; }
+
+.saved-del:hover {
+  color: var(--red);
+  border-color: rgba(var(--red-rgb), 0.6);
+}
+
+/* ── Save form ── */
+.save-form {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.save-input {
+  background: #0a0a0a;
+  border: 1px solid #2a2a2a;
+  border-radius: 2px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  padding: 0.34rem 0.55rem;
+  width: 15rem;
+  max-width: 100%;
+  outline: none;
+}
+
+.save-input:focus { border-color: rgba(var(--red-rgb), 0.6); }
+.save-input::placeholder { color: #3d3d3d; }
+
+.save-error,
+.auth-error {
+  color: var(--red);
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+}
+
+.saved-notice {
+  background: transparent;
+  border: none;
+  color: #4a4a4a;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+
+.saved-notice:hover { color: var(--text-muted); }
+
+/* ── Auth overlay ── */
+.auth-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: rgba(0, 0, 0, 0.82);
+  backdrop-filter: blur(2px);
+}
+
+.auth-box {
+  position: relative;
+  width: min(23rem, 100%);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.6rem 1.5rem 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  font-family: var(--font-mono);
+}
+
+.auth-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.auth-title {
+  font-size: 0.64rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(var(--red-rgb), 0.75);
+}
+
+.auth-close {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.2rem;
+}
+
+.auth-close:hover { color: var(--text); }
+
+.auth-blurb {
+  margin: 0;
+  font-size: 0.62rem;
+  line-height: 1.6;
+  letter-spacing: 0.03em;
+  color: #4a4a4a;
+}
+
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.auth-field > span {
+  font-size: 0.58rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.auth-field input {
+  background: #0a0a0a;
+  border: 1px solid #2a2a2a;
+  border-radius: 2px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  padding: 0.45rem 0.55rem;
+  outline: none;
+}
+
+.auth-field input:focus { border-color: rgba(var(--red-rgb), 0.6); }
+
+.auth-field > em {
+  font-style: normal;
+  font-size: 0.58rem;
+  color: var(--red);
+}
+
+.auth-submit {
+  justify-content: center;
+  margin-top: 0.25rem;
+}
+
+.auth-submit:disabled { opacity: 0.5; cursor: default; }
+
+.auth-switch {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  padding: 0.2rem 0;
+}
+
+.auth-switch:hover { color: var(--text); }
+
+/* Inputs are the one place text selection has to work — body sets
+   user-select: none for the drag-heavy canvas UI. */
+.save-input,
+.auth-field input { user-select: text; }
+
+@media (max-width: 560px) {
+  .save-input { width: 100%; }
+  .saved-rail { gap: 0.45rem; }
+  /* No hover on touch, so the delete control is always visible there. */
+  .saved-del { opacity: 1; }
+}
+
+/* Save sits with the presets it creates rather than in the transport rail —
+   which also keeps the built-in chip row from being squeezed by a fifth
+   button up there. */
+.saved-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  flex-shrink: 0;
+}

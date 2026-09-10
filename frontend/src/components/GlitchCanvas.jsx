@@ -3,7 +3,9 @@ import { Muxer, ArrayBufferTarget } from 'mp4-muxer'
 import { WebGLRenderer } from '../webgl/renderer'
 import { CPU_KEYS, hasCpuWork } from '../effects/cpu'
 import { CpuPass } from '../effects/client'
-import { IconShuffle, IconDie, IconUndo, IconEject, IconCamera, IconRecordDot, IconDownload, IconPlay, IconPause } from './icons'
+import { IconShuffle, IconDie, IconUndo, IconEject, IconCamera, IconRecordDot, IconDownload, IconPlay, IconPause, IconSave } from './icons'
+import { useAuth } from '../auth/AuthProvider'
+import { usePresetBank, MAX_NAME } from '../presets/usePresetBank'
 
 const DEFAULT_PARAMS = {
   colorGrade: 'none',
@@ -180,6 +182,10 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
 
   const [params, setParams]               = useState(DEFAULT_PARAMS)
   const [selectedPreset, setSelectedPreset] = useState('')
+  const [saving, setSaving]               = useState(false)
+  const [saveName, setSaveName]           = useState('')
+  const [saveError, setSaveError]         = useState(null)
+  const [selectedSavedId, setSelectedSavedId] = useState('')
   const [playing, setPlaying]             = useState(true)
   const [recording, setRecording]         = useState(false)
   const [exportFormat, setExportFormat]   = useState('webm')
@@ -376,6 +382,44 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
       }
     }
   }, [sourceUrl, sourceType])
+
+  const { status: authStatus, user } = useAuth()
+  const bank = usePresetBank(authStatus, user?.id)
+
+  function loadSaved(preset) {
+    setSelectedPreset('')
+    setSelectedSavedId(preset.id)
+    setParams({ ...DEFAULT_PARAMS, ...preset.params })
+    // A saved preset carries the seed it was saved with, so the corruption
+    // lands exactly where it did when you liked it. Without this the knobs
+    // come back but the look doesn't.
+    if (preset.seed != null) setSeed(preset.seed >>> 0)
+  }
+
+  async function deleteSaved(event, preset) {
+    event.stopPropagation()
+    if (selectedSavedId === preset.id) setSelectedSavedId('')
+    try { await bank.remove(preset.id) } catch { /* surfaced via bank.notice */ }
+  }
+
+  function openSave() {
+    const current = bank.presets.find(p => p.id === selectedSavedId)
+    setSaveName(current ? current.name : '')
+    setSaveError(null)
+    setSaving(true)
+  }
+
+  async function submitSave(event) {
+    event.preventDefault()
+    try {
+      const saved = await bank.save(saveName, params, seed)
+      setSelectedSavedId(saved.id)
+      setSelectedPreset('')
+      setSaving(false)
+    } catch (err) {
+      setSaveError(err.message || 'Could not save that.')
+    }
+  }
 
   function set(key, value) { setParams(p => ({ ...p, [key]: value })) }
 
@@ -652,7 +696,7 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
           <div className="chip-row">
             <button
               className={`chip${selectedPreset === '' ? ' active' : ''}`}
-              onClick={() => { setSelectedPreset(''); setParams(DEFAULT_PARAMS) }}
+              onClick={() => { setSelectedPreset(''); setSelectedSavedId(''); setParams(DEFAULT_PARAMS) }}
             >
               None
             </button>
@@ -660,7 +704,7 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
               <button
                 key={key}
                 className={`chip${selectedPreset === key ? ' active' : ''}`}
-                onClick={() => { setSelectedPreset(key); setParams({ ...DEFAULT_PARAMS, ...PRESETS[key] }) }}
+                onClick={() => { setSelectedPreset(key); setSelectedSavedId(''); setParams({ ...DEFAULT_PARAMS, ...PRESETS[key] }) }}
               >
                 {PRESET_LABELS[key]}
               </button>
@@ -669,9 +713,72 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
           <div className="console-actions">
             <button className="console-btn" onClick={handleRandomize}><IconShuffle /> Random</button>
             <button className="console-btn" onClick={() => setSeed((Math.random() * 0xffffffff) >>> 0)} title="Reroll the random placement without touching the knobs"><IconDie /> Reseed</button>
-            <button className="console-btn" onClick={() => { setParams(DEFAULT_PARAMS); setSelectedPreset('') }}><IconUndo /> Clear</button>
+            <button className="console-btn" onClick={() => { setParams(DEFAULT_PARAMS); setSelectedPreset(''); setSelectedSavedId('') }}><IconUndo /> Clear</button>
             <button className="console-btn" onClick={onReset} title="Load different media"><IconEject /> Eject</button>
           </div>
+        </div>
+
+        {/* ── Saved presets ── a second chip row under the built-ins, same
+            chip styling. Works signed out (localStorage) and signed in
+            (server); the rail only says which when it has something to say. */}
+        <div className="saved-rail">
+          <span className="saved-label">My Presets</span>
+          {!saving && (
+            <button className="chip saved-save" onClick={openSave}><IconSave /> Save</button>
+          )}
+
+          {saving ? (
+            <form className="save-form" onSubmit={submitSave}>
+              <input
+                className="save-input"
+                value={saveName}
+                onChange={e => { setSaveName(e.target.value); setSaveError(null) }}
+                placeholder="Name this look"
+                maxLength={MAX_NAME}
+                autoFocus
+                onKeyDown={e => { if (e.key === 'Escape') setSaving(false) }}
+              />
+              <button type="submit" className="chip" disabled={bank.busy}>Save</button>
+              <button type="button" className="chip" onClick={() => setSaving(false)}>Cancel</button>
+              {saveError && <span className="save-error">{saveError}</span>}
+            </form>
+          ) : bank.presets.length === 0 ? (
+            <span className="saved-empty">
+              Dial in a look and hit Save. {authStatus === 'anon' && 'Sign in to keep them across devices.'}
+            </span>
+          ) : (
+            <div className="chip-row chip-row-tight saved-chips">
+              {bank.presets.map(preset => (
+                <span key={preset.id} className="saved-chip">
+                  <button
+                    className={`chip${selectedSavedId === preset.id ? ' active' : ''}`}
+                    onClick={() => loadSaved(preset)}
+                    // Without an explicit label the title wins the accessible
+                    // name, so every saved preset announces as "Restores knobs
+                    // and seed" and they become indistinguishable by ear.
+                    aria-label={`Load ${preset.name}`}
+                    title={preset.seed != null ? 'Restores knobs and seed' : 'Restores knobs'}
+                  >
+                    {preset.name}
+                  </button>
+                  <button
+                    className="saved-del"
+                    onClick={e => deleteSaved(e, preset)}
+                    aria-label={`Delete ${preset.name}`}
+                    title="Delete"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          {bank.notice && (
+            <button className="saved-notice" onClick={bank.clearNotice} title="Dismiss">
+              {bank.notice}
+            </button>
+          )}
         </div>
 
         <div className="console-display">
