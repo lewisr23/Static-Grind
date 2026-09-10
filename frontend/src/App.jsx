@@ -113,6 +113,11 @@ function AccountRail({ onOpenAuth }) {
       {status === 'anon' && (
         <button className="account-btn" onClick={onOpenAuth}>Sign in</button>
       )}
+      {status === 'unavailable' && (
+        <span className="account-offline" title="Presets are saved in this browser. There is no account server to sync them to.">
+          Saved on this device
+        </span>
+      )}
       {status === 'offline' && (
         <button
           className="account-btn account-offline"

@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
-import { api, OfflineError } from '../api/client'
+import { accountsAvailable, api, OfflineError } from '../api/client'
 
 const AuthContext = createContext(null)
 
@@ -7,10 +7,13 @@ const AuthContext = createContext(null)
  * Who is signed in, if anyone.
  *
  * status is one of:
- *   loading  — the initial /me call is in flight
- *   authed   — signed in, `user` is populated
- *   anon     — server reachable, nobody signed in
- *   offline  — server unreachable; the tool works, accounts don't
+ *   loading      — the initial /me call is in flight
+ *   authed       — signed in, `user` is populated
+ *   anon         — server reachable, nobody signed in
+ *   offline      — a server is configured but unreachable right now
+ *   unavailable  — no accounts API is configured at all; presets are local
+ *                  by design rather than by failure. Distinct from offline so
+ *                  the UI can avoid implying an outage that isn't happening.
  *
  * offline is a first-class state rather than an error because Static Grind's
  * actual job runs entirely in the browser. A backend that is down should cost
@@ -21,6 +24,11 @@ export function AuthProvider({ children }) {
   const [status, setStatus] = useState('loading')
 
   const refresh = useCallback(async () => {
+    if (!accountsAvailable) {
+      setUser(null)
+      setStatus('unavailable')
+      return
+    }
     try {
       const me = await api.me()
       setUser(me)

@@ -7,6 +7,19 @@
 
 const BASE = (import.meta.env.VITE_API_URL || 'http://localhost:8080').replace(/\/+$/, '')
 
+/**
+ * Whether an accounts API exists to talk to.
+ *
+ * With no VITE_API_URL set, BASE falls back to localhost, which is right for
+ * development and meaningless anywhere else — the deployed site would fire a
+ * request at the visitor's own machine, get blocked as mixed content, and then
+ * report itself "offline" as though a server were having a bad day. There is no
+ * server. Better to know that up front and not ask.
+ */
+export const accountsAvailable =
+  Boolean(import.meta.env.VITE_API_URL) ||
+  /^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname)
+
 /** The server answered, and said no. `fields` is populated for validation failures. */
 export class ApiError extends Error {
   constructor(status, message, fields = {}) {
