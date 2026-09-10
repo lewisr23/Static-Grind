@@ -4,6 +4,11 @@ import { api, ApiError, OfflineError } from '../api/client'
 const KEY = 'staticgrind.presets.v1'
 export const MAX_NAME = 40
 
+// Fired after every local write so anything showing a count of what is on this
+// device (the header readout) updates in the same tab. The browser's own
+// 'storage' event only fires in *other* tabs.
+const LOCAL_CHANGE_EVENT = 'staticgrind-presets-local'
+
 // Versioned so the stored shape can change later without having to guess what
 // an old blob meant.
 function readLocal() {
@@ -20,6 +25,22 @@ function readLocal() {
 
 function writeLocal(list) {
   try { localStorage.setItem(KEY, JSON.stringify(list)) } catch { /* nothing to do */ }
+  window.dispatchEvent(new Event(LOCAL_CHANGE_EVENT))
+}
+
+/** How many presets are saved in this browser. Live, not a snapshot. */
+export function useLocalPresetCount() {
+  const [count, setCount] = useState(() => readLocal().length)
+  useEffect(() => {
+    const update = () => setCount(readLocal().length)
+    window.addEventListener(LOCAL_CHANGE_EVENT, update)
+    window.addEventListener('storage', update)
+    return () => {
+      window.removeEventListener(LOCAL_CHANGE_EVENT, update)
+      window.removeEventListener('storage', update)
+    }
+  }, [])
+  return count
 }
 
 function localId() {

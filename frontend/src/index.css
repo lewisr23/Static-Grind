@@ -19,7 +19,7 @@
   --radius: 4px;
   /* The console (post-upload UI: knobs, buttons, readouts) reads as an
      instrument panel, so it runs on a monospace face. The landing screen
-     keeps Inter — this is scoped to .mod-console only. */
+     keeps Inter — this is scoped to the rails and display only. */
   --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
 }
 
@@ -38,6 +38,15 @@ body {
   padding: 2rem 1.5rem;
 }
 
+/* Once media is loaded the page becomes a three-column desk: control rail,
+   display, control rail. Wide enough that both rails and a decent-sized
+   picture sit side by side, capped so the display isn't a cavern on a big
+   monitor. */
+.app.workspace {
+  max-width: 1500px;
+  padding: 1rem 1.5rem 1.5rem;
+}
+
 /* ── Header ── */
 .app-header {
   position: relative;
@@ -45,6 +54,63 @@ body {
   text-align: center;
   margin-bottom: 3rem;
   animation: signalLock 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* Workspace header: one strip, left-aligned, with the readout and account
+   controls on the right. Every pixel of height here is a pixel the display
+   can't have. */
+.app.workspace .app-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  text-align: left;
+  margin-bottom: 1rem;
+  padding-bottom: 0.7rem;
+  border-bottom: 1px solid #1c1c1c;
+}
+
+.app.workspace .logo {
+  font-size: 1.5rem;
+  gap: 0.5rem;
+}
+
+.app.workspace .logo-mark {
+  width: 26px;
+  height: 26px;
+}
+
+.app.workspace .tagline {
+  margin-top: 0.15rem;
+  font-size: 0.68rem;
+}
+
+.header-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 1.1rem;
+}
+
+.app.workspace .account-rail {
+  margin: 0;
+  min-height: 0;
+}
+
+/* The readout that replaced the clock. Same red as the HUD corners so it
+   reads as an instrument label, not a notification. */
+.preset-readout {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--red);
+  white-space: nowrap;
+}
+
+.hud .preset-readout {
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
 }
 
 .app-header::after {
@@ -270,16 +336,33 @@ body {
   margin-top: 0.4rem;
 }
 
-/* ── Glitch Workspace (canvas stacked over the mod deck) ── */
+/* ── Glitch Workspace: rail · display · rail ──
+   The display is the thing you're looking at, so it sits in the middle at
+   eye level with the knobs either side of it — no scrolling down past the
+   picture to reach a control. */
 .glitch-workspace {
+  display: grid;
+  grid-template-columns: minmax(262px, 300px) minmax(0, 1fr) minmax(262px, 300px);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.rail {
+  background: #060606;
+  border: 1px solid #262626;
+  border-radius: 3px;
+  padding: 1rem 0.9rem 1.1rem;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1.1rem;
+  font-family: var(--font-mono);
 }
 
 /* ── Console Display (screen bezel around the canvas) ── */
 /* Thin viewfinder frame around the canvas, not a moulded bezel */
 .console-display {
+  position: sticky;
+  top: 1rem;
   background: #050505;
   border: 1px solid #262626;
   border-radius: 2px;
@@ -287,6 +370,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.7rem;
+  font-family: var(--font-mono);
 }
 
 .result-img {
@@ -302,21 +386,33 @@ body {
   justify-content: center;
 }
 
-/* size to the canvas's own aspect ratio — no letterbox bars */
+/* Size to the canvas's own aspect ratio — no letterbox bars. The height cap
+   is what keeps the whole picture on screen: viewport minus the header strip,
+   the transport row and the panel padding around them. */
 .canvas-wrapper canvas {
   max-width: 100%;
-  max-height: 58vh;
+  max-height: calc(100vh - 200px);
   width: auto;
   height: auto;
   display: block;
   border-radius: 4px;
 }
 
-/* ── Transport (inside the display) ── */
+/* ── Transport (inside the display) ──
+   Export controls on the left, the four mod actions on the right. */
 .transport {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
   gap: 0.5rem;
+}
+
+.transport-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
 }
 
 .download-wrap {
@@ -427,26 +523,7 @@ body {
   right: 16px;
 }
 
-/* ── Mod Console ───────────────────────────────────────────────────────────
-   Hardware-rack control surface: rotary knobs grouped into three labeled
-   sections, corner screws, preset chips along the header rail. Everything
-   that lights up does so in the same red, the section labels (Tone / Warp /
-   Corrupt) are what carry the category, not a different colour per section. */
-/* No hardware-panel gradient or screws here — this reads as a scope
-   readout, not a piece of physical gear: a flat dark field, a hairline
-   border, and open corner brackets marking it like a targeting frame. */
-.mod-console {
-  position: relative;
-  background: #060606;
-  border: 1px solid #262626;
-  border-radius: 3px;
-  padding: 1.4rem 1.6rem 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1.1rem;
-  font-family: var(--font-mono);
-}
-
+/* ── Corner brackets (used by the easter egg box) ── */
 .screw {
   position: absolute;
   width: 14px;
@@ -459,32 +536,6 @@ body {
 .s-tr { top: -1px; right: -1px; border-left: none; border-bottom: none; }
 .s-bl { bottom: -1px; left: -1px; border-right: none; border-top: none; }
 .s-br { bottom: -1px; right: -1px; border-left: none; border-top: none; }
-
-/* ── Header rail ── */
-.console-header {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  flex-wrap: wrap;
-  padding-bottom: 0.9rem;
-  border-bottom: 1px solid #232323;
-}
-
-.console-title {
-  font-size: 0.64rem;
-  letter-spacing: 0.22em;
-  color: rgba(var(--red-rgb), 0.75);
-  text-transform: uppercase;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.console-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin-left: auto;
-}
 
 /* Buttons read as bracketed line-art rather than filled pills — no fill,
    a hairline border, the label framed in literal brackets like a readout
@@ -523,14 +574,16 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
-  flex: 1;
-  min-width: 200px;
+  min-width: 0;
 }
 
 .chip-row-tight {
-  flex: initial;
-  min-width: 0;
   margin-bottom: 0.9rem;
+}
+
+/* Last thing in a section: no trailing gap under the chips */
+.console-section > .chip-row-tight:last-child {
+  margin-bottom: 0;
 }
 
 .chip {
@@ -567,44 +620,48 @@ body {
   color: var(--red);
 }
 
-/* ── Console body: three sections ── */
-.console-body {
-  display: flex;
-  gap: 1.5rem;
-  align-items: stretch;
-  flex-wrap: wrap;
-}
-
+/* ── Sections, stacked down each rail ── */
 .console-section {
-  flex: 1;
-  min-width: 220px;
-  padding: 0.4rem 0 0;
+  min-width: 0;
 }
 
 .console-section + .console-section {
-  border-left: 1px solid #232323;
-  padding-left: 1.5rem;
+  border-top: 1px solid #232323;
+  padding-top: 1rem;
 }
 
-@media (max-width: 900px) {
-  .console-section + .console-section {
-    border-left: none;
-    padding-left: 0;
-    border-top: 1px solid #232323;
-    padding-top: 1rem;
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.9rem;
+}
+
+.section-head .console-section-title {
+  margin-bottom: 0;
+}
+
+/* Below three-column width the desk folds into one column: display first
+   and pinned to the top, so turning a knob further down is still visible
+   without scrolling back up to look at it. */
+@media (max-width: 1100px) {
+  .glitch-workspace {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  /* On a narrow screen the knob sections run on well past one screen's
-     height. Pin the preview + transport at the top so turning a knob is
-     still visible without scrolling back up to look at it. */
   .console-display {
-    position: sticky;
+    order: -1;
     top: 0;
     z-index: 20;
   }
 
   .canvas-wrapper canvas {
     max-height: 34vh;
+  }
+
+  .knob-row {
+    grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
   }
 }
 
@@ -617,11 +674,12 @@ body {
   margin-bottom: 0.9rem;
 }
 
-/* ── Knobs ── */
+/* ── Knobs ── three across fills a rail exactly */
 .knob-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.9rem 0.5rem;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  justify-items: center;
+  gap: 0.9rem 0.25rem;
 }
 
 .knob-unit {
@@ -1021,27 +1079,11 @@ body {
   cursor: help;
 }
 
-/* ── Saved preset rail ── */
-.saved-rail {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-  padding: 0.75rem 0 0.15rem;
-  font-family: var(--font-mono);
-}
-
-.saved-label {
-  font-size: 0.6rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: rgba(var(--red-rgb), 0.5);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
+/* ── Saved presets ── */
 .saved-empty {
+  display: block;
   font-size: 0.62rem;
+  line-height: 1.6;
   letter-spacing: 0.05em;
   color: #3d3d3d;
 }
@@ -1100,8 +1142,7 @@ body {
   font-size: 0.66rem;
   letter-spacing: 0.06em;
   padding: 0.34rem 0.55rem;
-  width: 15rem;
-  max-width: 100%;
+  width: 100%;
   outline: none;
 }
 
@@ -1116,14 +1157,16 @@ body {
 }
 
 .saved-notice {
+  display: block;
   background: transparent;
   border: none;
   color: #4a4a4a;
   font-family: var(--font-mono);
   font-size: 0.6rem;
+  line-height: 1.5;
   letter-spacing: 0.05em;
   cursor: pointer;
-  padding: 0;
+  padding: 0.6rem 0 0;
   text-align: left;
 }
 
@@ -1245,15 +1288,35 @@ body {
 .auth-field input { user-select: text; }
 
 @media (max-width: 560px) {
-  .save-input { width: 100%; }
-  .saved-rail { gap: 0.45rem; }
   /* No hover on touch, so the delete control is always visible there. */
   .saved-del { opacity: 1; }
 }
 
-/* Save sits with the presets it creates rather than in the transport rail —
-   which also keeps the built-in chip row from being squeezed by a fifth
-   button up there. */
+/* Phone-width header: no room for the tagline or the readout next to the
+   logo, and the readout still shows on the landing screen anyway. */
+@media (max-width: 700px) {
+  .app.workspace .tagline,
+  .header-right .preset-readout {
+    display: none;
+  }
+
+  /* The display is sticky on narrow screens, so every row of buttons under
+     the picture is a row stolen from the knobs. Flatten the two transport
+     groups so the buttons pack into as few lines as they can. */
+  .transport {
+    justify-content: flex-start;
+  }
+
+  .transport-group {
+    display: contents;
+  }
+
+  .console-display .console-btn {
+    padding: 0.35rem 0.55rem;
+  }
+}
+
+/* Save sits with the presets it creates, up in the section head. */
 .saved-save {
   display: inline-flex;
   align-items: center;

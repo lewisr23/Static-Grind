@@ -661,21 +661,138 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
     }
   }
 
+  // The knobs for one category. Each rail stacks its categories vertically,
+  // so this is the only thing that changes between the sections.
+  const knobsFor = cat => MOD_CONFIG.filter(c => c.cat === cat).map(cfg => (
+    <Knob key={cfg.key} label={cfg.label} cat={cfg.cat} min={cfg.min} max={cfg.max} def={cfg.def}
+      step={cfg.step} display={cfg.display} value={params[cfg.key]} onChange={v => set(cfg.key, v)} />
+  ))
+
   return (
     <div className="glitch-workspace">
       {/* Hidden WebGL canvas */}
       <canvas ref={glCanvasRef} style={{ display: 'none' }} />
 
-      {/* ── SG-01 Console: display + transport + mod sections in one unit ── */}
-      <div className="mod-console">
-        <span className="screw s-tl" aria-hidden="true" />
-        <span className="screw s-tr" aria-hidden="true" />
-        <span className="screw s-bl" aria-hidden="true" />
-        <span className="screw s-br" aria-hidden="true" />
+      {/* ── Left rail: Tone + Warp ──
+          Three categories don't split evenly across two sides, so the split is
+          by height instead: Tone (small) + Warp on the left, Corrupt + the two
+          preset banks on the right come out roughly level. */}
+      <aside className="rail rail-left">
+        <section className="console-section sec-tone">
+          <h3 className="console-section-title">Tone</h3>
+          <div className="chip-row chip-row-tight">
+            {GRADES.map(g => (
+              <button
+                key={g.value}
+                className={`chip${params.colorGrade === g.value ? ' active' : ''}`}
+                onClick={() => set('colorGrade', g.value)}
+              >
+                {g.label}
+              </button>
+            ))}
+          </div>
+          <div className="knob-row">{knobsFor('tone')}</div>
+        </section>
 
-        <div className="console-header">
-          <span className="console-title">MOD CONSOLE</span>
-          <div className="chip-row">
+        <section className="console-section sec-warp">
+          <h3 className="console-section-title">Warp</h3>
+          <div className="knob-row">{knobsFor('warp')}</div>
+        </section>
+      </aside>
+
+      {/* ── Display: the canvas, with export on one side of the transport and
+          the mod actions on the other. Sticky, so if the rails ever run longer
+          than the screen the picture stays put while they scroll past. ── */}
+      <div className="console-display">
+        <div className="canvas-wrapper" ref={canvasWrapperRef}>
+          <canvas ref={canvasRef} className="result-img" />
+          {/* iOS Safari has never implemented the Fullscreen API for anything
+              but a bare <video>, so document.fullscreenEnabled is false there
+              — a button that visibly does nothing on tap is worse than no
+              button, so it just doesn't render rather than fake support. */}
+          {fullscreenSupported && (
+            <button className="fullscreen-btn" onClick={toggleFullscreen} title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}>
+              {isFullscreen ? (
+                <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                  <path d="M5 1v4H1M8 1h4v4M8 12h4V8M5 12H1V8"/>
+                </svg>
+              ) : (
+                <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                  <path d="M1 5V1h4M8 1h4v4M12 8v4H8M5 12H1V8"/>
+                </svg>
+              )}
+            </button>
+          )}
+        </div>
+
+        <div className="transport">
+          <div className="transport-group">
+            <div className="download-wrap">
+              {sourceType === 'video' || sourceType === 'webcam' ? (
+                <>
+                  {sourceType === 'webcam' && (
+                    <button className="console-btn" onClick={handleSnapshot} title="Save current frame as PNG"><IconCamera /> Snap</button>
+                  )}
+                  {recording ? (
+                    <button className="console-btn primary recording" onClick={handleRecordStop}>■ Stop &amp; Save</button>
+                  ) : RECORD_FORMATS.length === 1 ? (
+                    // Only one working format on this platform — recording
+                    // straight into it beats showing a dropdown with one item.
+                    <button className="console-btn primary" onClick={() => handleRecordStartWith(RECORD_FORMATS[0])}>
+                      <IconRecordDot /> Record
+                    </button>
+                  ) : (
+                    <>
+                      <button className="console-btn primary" onClick={() => setShowFormatPicker(p => !p)}><IconRecordDot /> Record ▾</button>
+                      {showFormatPicker && (
+                        <div className="format-picker">
+                          {RECORD_FORMATS.map(fmt => (
+                            <button key={fmt} className="fmt-option" onClick={() => {
+                              setExportFormat(fmt); setShowFormatPicker(false); handleRecordStartWith(fmt)
+                            }}>{fmt.toUpperCase()}</button>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </>
+              ) : (
+                <button className="console-btn primary" onClick={handleDownload}><IconDownload /> Download</button>
+              )}
+            </div>
+            {sourceType === 'video' && (
+              <button className="console-btn" onClick={togglePlay}>{playing ? <><IconPause /> Pause</> : <><IconPlay /> Play</>}</button>
+            )}
+          </div>
+
+          <div className="transport-group transport-actions">
+            <button className="console-btn" onClick={handleRandomize}><IconShuffle /> Random</button>
+            <button
+              className="console-btn"
+              onClick={() => setSeed((Math.random() * 0xffffffff) >>> 0)}
+              disabled={!canReseed}
+              title={canReseed
+                ? 'Reroll the random placement without touching the knobs'
+                : 'Needs Row Shift, Block Glitch, Smear or Melt above zero — nothing else uses the seed'}
+            >
+              <IconDie /> Reseed
+            </button>
+            <button className="console-btn" onClick={() => { setParams(DEFAULT_PARAMS); setSelectedPreset(''); setSelectedSavedId('') }}><IconUndo /> Clear</button>
+            <button className="console-btn" onClick={onReset} title="Load different media"><IconEject /> Eject</button>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Right rail: Corrupt + presets ── */}
+      <aside className="rail rail-right">
+        <section className="console-section sec-corrupt">
+          <h3 className="console-section-title">Corrupt</h3>
+          <div className="knob-row">{knobsFor('corrupt')}</div>
+        </section>
+
+        <section className="console-section sec-presets">
+          <h3 className="console-section-title">Presets</h3>
+          <div className="chip-row chip-row-tight">
             <button
               className={`chip${selectedPreset === '' ? ' active' : ''}`}
               onClick={() => { setSelectedPreset(''); setSelectedSavedId(''); setParams(DEFAULT_PARAMS) }}
@@ -692,31 +809,18 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
               </button>
             ))}
           </div>
-          <div className="console-actions">
-            <button className="console-btn" onClick={handleRandomize}><IconShuffle /> Random</button>
-            <button
-              className="console-btn"
-              onClick={() => setSeed((Math.random() * 0xffffffff) >>> 0)}
-              disabled={!canReseed}
-              title={canReseed
-                ? 'Reroll the random placement without touching the knobs'
-                : 'Needs Row Shift, Block Glitch, Smear or Melt above zero — nothing else uses the seed'}
-            >
-              <IconDie /> Reseed
-            </button>
-            <button className="console-btn" onClick={() => { setParams(DEFAULT_PARAMS); setSelectedPreset(''); setSelectedSavedId('') }}><IconUndo /> Clear</button>
-            <button className="console-btn" onClick={onReset} title="Load different media"><IconEject /> Eject</button>
-          </div>
-        </div>
+        </section>
 
-        {/* ── Saved presets ── a second chip row under the built-ins, same
-            chip styling. Works signed out (localStorage) and signed in
-            (server); the rail only says which when it has something to say. */}
-        <div className="saved-rail">
-          <span className="saved-label">My Presets</span>
-          {!saving && (
-            <button className="chip saved-save" onClick={openSave}><IconSave /> Save</button>
-          )}
+        {/* Saved presets: same chip styling as the built-ins above. Works
+            signed out (localStorage) and signed in (server); the section only
+            says which when it has something to say. */}
+        <section className="console-section sec-saved">
+          <div className="section-head">
+            <h3 className="console-section-title">My Presets</h3>
+            {!saving && (
+              <button className="chip saved-save" onClick={openSave}><IconSave /> Save</button>
+            )}
+          </div>
 
           {saving ? (
             <form className="save-form" onSubmit={submitSave}>
@@ -770,112 +874,8 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
               {bank.notice}
             </button>
           )}
-        </div>
-
-        <div className="console-display">
-          <div className="canvas-wrapper" ref={canvasWrapperRef}>
-          <canvas ref={canvasRef} className="result-img" />
-          {/* iOS Safari has never implemented the Fullscreen API for anything
-              but a bare <video>, so document.fullscreenEnabled is false there
-              — a button that visibly does nothing on tap is worse than no
-              button, so it just doesn't render rather than fake support. */}
-          {fullscreenSupported && (
-            <button className="fullscreen-btn" onClick={toggleFullscreen} title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}>
-              {isFullscreen ? (
-                <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                  <path d="M5 1v4H1M8 1h4v4M8 12h4V8M5 12H1V8"/>
-                </svg>
-              ) : (
-                <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                  <path d="M1 5V1h4M8 1h4v4M12 8v4H8M5 12H1V8"/>
-                </svg>
-              )}
-            </button>
-          )}
-        </div>
-          <div className="transport">
-            <div className="download-wrap">
-              {sourceType === 'video' || sourceType === 'webcam' ? (
-                <>
-                  {sourceType === 'webcam' && (
-                    <button className="console-btn" onClick={handleSnapshot} title="Save current frame as PNG"><IconCamera /> Snap</button>
-                  )}
-                  {recording ? (
-                    <button className="console-btn primary recording" onClick={handleRecordStop}>■ Stop &amp; Save</button>
-                  ) : RECORD_FORMATS.length === 1 ? (
-                    // Only one working format on this platform — recording
-                    // straight into it beats showing a dropdown with one item.
-                    <button className="console-btn primary" onClick={() => handleRecordStartWith(RECORD_FORMATS[0])}>
-                      <IconRecordDot /> Record
-                    </button>
-                  ) : (
-                    <>
-                      <button className="console-btn primary" onClick={() => setShowFormatPicker(p => !p)}><IconRecordDot /> Record ▾</button>
-                      {showFormatPicker && (
-                        <div className="format-picker">
-                          {RECORD_FORMATS.map(fmt => (
-                            <button key={fmt} className="fmt-option" onClick={() => {
-                              setExportFormat(fmt); setShowFormatPicker(false); handleRecordStartWith(fmt)
-                            }}>{fmt.toUpperCase()}</button>
-                          ))}
-                        </div>
-                      )}
-                    </>
-                  )}
-                </>
-              ) : (
-                <button className="console-btn primary" onClick={handleDownload}><IconDownload /> Download</button>
-              )}
-            </div>
-            {sourceType === 'video' && (
-              <button className="console-btn" onClick={togglePlay}>{playing ? <><IconPause /> Pause</> : <><IconPlay /> Play</>}</button>
-            )}
-          </div>
-        </div>
-
-        <div className="console-body">
-          <section className="console-section sec-tone">
-            <h3 className="console-section-title">Tone</h3>
-            <div className="chip-row chip-row-tight">
-              {GRADES.map(g => (
-                <button
-                  key={g.value}
-                  className={`chip${params.colorGrade === g.value ? ' active' : ''}`}
-                  onClick={() => set('colorGrade', g.value)}
-                >
-                  {g.label}
-                </button>
-              ))}
-            </div>
-            <div className="knob-row">
-              {MOD_CONFIG.filter(c => c.cat === 'tone').map(cfg => (
-                <Knob key={cfg.key} label={cfg.label} cat={cfg.cat} min={cfg.min} max={cfg.max} def={cfg.def}
-                  step={cfg.step} display={cfg.display} value={params[cfg.key]} onChange={v => set(cfg.key, v)} />
-              ))}
-            </div>
-          </section>
-
-          <section className="console-section sec-warp">
-            <h3 className="console-section-title">Warp</h3>
-            <div className="knob-row">
-              {MOD_CONFIG.filter(c => c.cat === 'warp').map(cfg => (
-                <Knob key={cfg.key} label={cfg.label} cat={cfg.cat} min={cfg.min} max={cfg.max} def={cfg.def}
-                  step={cfg.step} display={cfg.display} value={params[cfg.key]} onChange={v => set(cfg.key, v)} />
-              ))}
-            </div>
-          </section>
-
-          <section className="console-section sec-corrupt">
-            <h3 className="console-section-title">Corrupt</h3>
-            <div className="knob-row">
-              {MOD_CONFIG.filter(c => c.cat === 'corrupt').map(cfg => (
-                <Knob key={cfg.key} label={cfg.label} cat={cfg.cat} min={cfg.min} max={cfg.max} def={cfg.def}
-                  step={cfg.step} display={cfg.display} value={params[cfg.key]} onChange={v => set(cfg.key, v)} />
-              ))}
-            </div>
-          </section>
-        </div>
-      </div>
+        </section>
+      </aside>
     </div>
   )
 }

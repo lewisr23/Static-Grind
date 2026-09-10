@@ -4,19 +4,19 @@ import GlitchCanvas from './components/GlitchCanvas'
 import NoiseBackground from './components/NoiseBackground'
 import AuthPanel from './auth/AuthPanel'
 import { useAuth } from './auth/AuthProvider'
+import { useLocalPresetCount } from './presets/usePresetBank'
 
-function Clock() {
-  const [now, setNow] = useState(() => new Date())
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 1000)
-    return () => clearInterval(id)
-  }, [])
-  const pad = n => String(n).padStart(2, '0')
-  return (
-    <span>
-      {pad(now.getHours())}:{pad(now.getMinutes())}:{pad(now.getSeconds())}
-    </span>
-  )
+/**
+ * Where the clock used to be: how many looks are saved in this browser.
+ * A live readout the same as the clock was, but one that is actually about
+ * this tool. Hidden once signed in, because the bank lives on the server then.
+ */
+function PresetReadout() {
+  const { status } = useAuth()
+  const count = useLocalPresetCount()
+  if (status === 'authed' || status === 'loading') return null
+  const label = count === 0 ? 'NO PRESETS' : count === 1 ? '1 PRESET' : `${count} PRESETS`
+  return <span className="preset-readout">{label} SAVED ON THIS DEVICE</span>
 }
 
 function Typewriter({ text }) {
@@ -26,12 +26,7 @@ function Typewriter({ text }) {
     const id = setTimeout(() => setCount(c => c + 1), 110)
     return () => clearTimeout(id)
   }, [count, text])
-  return (
-    <span>
-      {text.slice(0, count)}
-      <span className="blink">_</span>
-    </span>
-  )
+  return <span>{text.slice(0, count)}</span>
 }
 
 // Two ways in, since a phone has no keyboard to type "pen15" into: typing it
@@ -113,11 +108,6 @@ function AccountRail({ onOpenAuth }) {
       {status === 'anon' && (
         <button className="account-btn" onClick={onOpenAuth}>Sign in</button>
       )}
-      {status === 'unavailable' && (
-        <span className="account-offline" title="Presets are saved in this browser. There is no account server to sync them to.">
-          All presets saved on this device
-        </span>
-      )}
       {status === 'offline' && (
         <button
           className="account-btn account-offline"
@@ -148,7 +138,7 @@ export default function App() {
             PRIVACY
           </a>
           <div className="hud hud-tr" aria-hidden="true">
-            <Clock />
+            <PresetReadout />
           </div>
           <div className="hud hud-bl" aria-hidden="true">
             SRC 01 · NO SIGNAL
@@ -159,19 +149,28 @@ export default function App() {
         </>
       )}
 
-      <div className={source ? 'app' : 'app landing'}>
-        <AccountRail onOpenAuth={() => setAuthOpen(true)} />
+      <div className={source ? 'app workspace' : 'app landing'}>
+        {!source && <AccountRail onOpenAuth={() => setAuthOpen(true)} />}
         <header className="app-header">
           <h1 className="logo" onClick={onLogoTap}>
             <img src="/logo_mark.png" alt="" className="logo-mark" />
             <span className="glitch-text" data-text="STATICGRIND">
               STATIC<span>GRIND</span>
             </span>
-            <img src="/logo_mark.png" alt="" className="logo-mark" />
+            {!source && <img src="/logo_mark.png" alt="" className="logo-mark" />}
           </h1>
           <p className="tagline">
             {source ? 'digital lathe' : <Typewriter text="digital lathe" />}
           </p>
+          {/* Once media is loaded the header collapses to a single strip so the
+              display and both control rails fit on one screen; the readout and
+              account controls ride along on its right. */}
+          {source && (
+            <div className="header-right">
+              <PresetReadout />
+              <AccountRail onOpenAuth={() => setAuthOpen(true)} />
+            </div>
+          )}
         </header>
 
         <main className="app-main">
