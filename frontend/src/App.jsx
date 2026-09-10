@@ -115,7 +115,7 @@ function AccountRail({ onOpenAuth }) {
       )}
       {status === 'unavailable' && (
         <span className="account-offline" title="Presets are saved in this browser. There is no account server to sync them to.">
-          Presets saved on this device
+          All presets saved on this device
         </span>
       )}
       {status === 'offline' && (
