@@ -17,6 +17,9 @@
   --text: #cccccc;
   --text-muted: #555555;
   --radius: 4px;
+  /* Amber, used for one thing only: a knob the user has pinned. Distinct from
+     the red an active knob lights up in, so lock reads as "held", not "on". */
+  --lock: #d9a441;
   /* The console (post-upload UI: knobs, buttons, readouts) reads as an
      instrument panel, so it runs on a monospace face. The landing screen
      keeps Inter — this is scoped to the rails and display only. */
@@ -171,6 +174,30 @@ body {
 
 .logo span {
   color: var(--red);
+}
+
+/* In the workspace the wordmark is the way back to the start. It has to look
+   exactly like the plain <h1> it replaces — only the cursor gives it away. */
+.logo-home {
+  display: flex;
+  align-items: center;
+  gap: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.logo-home:hover .glitch-text {
+  text-shadow: 2px 0 rgba(var(--red-rgb), 0.7), -2px 0 rgba(255, 255, 255, 0.25);
+}
+
+.logo-home:focus-visible {
+  outline: 1px solid rgba(var(--red-rgb), 0.7);
+  outline-offset: 4px;
 }
 
 /* ── Glitch Logo ── */
@@ -739,6 +766,7 @@ body {
 }
 
 .knob-dial {
+  position: relative;
   width: 56px;
   height: 56px;
   cursor: ns-resize;
@@ -841,6 +869,45 @@ body {
 .knob-unit.active .knob-label,
 .knob-unit.active .knob-value {
   color: var(--text);
+}
+
+/* ── Locked knob (Ctrl on a knob) ──
+   Pinned against Random, Clear and preset loads. Held, not off: it keeps its
+   lit ring and just picks up an amber rim and a badge. */
+.knob-unit.locked .knob-dial {
+  cursor: default;
+}
+
+.knob-unit.locked .knob-cap,
+.knob-unit.locked .knob-dial:hover .knob-cap {
+  stroke: var(--lock);
+  stroke-dasharray: 3 2.5;
+}
+
+.knob-unit.locked .knob-label {
+  color: var(--lock);
+}
+
+.knob-unit.locked .knob-value {
+  cursor: default;
+}
+
+.knob-unit.locked .knob-value:hover {
+  color: #777777;
+}
+
+.knob-lock {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 13px;
+  height: 13px;
+  fill: var(--lock);
+  stroke: var(--lock);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.9));
+  pointer-events: none;
 }
 
 .ctrl-value-input {

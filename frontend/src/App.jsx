@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import UploadForm from './components/UploadForm'
 import GlitchCanvas from './components/GlitchCanvas'
 import NoiseBackground from './components/NoiseBackground'
 import AuthPanel from './auth/AuthPanel'
 import { useAuth } from './auth/AuthProvider'
 import { useLocalPresetCount } from './presets/usePresetBank'
+import { EASTER_EGG_EVENT } from './easterEgg'
 
 /**
  * Where the clock used to be: how many looks are saved in this browser.
@@ -30,9 +31,8 @@ function Typewriter({ text }) {
 }
 
 // Two ways in, since a phone has no keyboard to type "pen15" into: typing it
-// anywhere outside a text field, or five quick taps on the logo. Neither is
-// surfaced in the UI — it's only for people who already know to try it.
-const EASTER_EGG_EVENT = 'staticgrind-easter-egg'
+// anywhere outside a text field, or slamming the Pixel Sort knob from 0 to 100
+// and back three times inside five seconds (wired up in GlitchCanvas).
 
 function EasterEgg() {
   const [show, setShow] = useState(false)
@@ -70,21 +70,6 @@ function EasterEgg() {
     </div>
   )
 }
-
-// Five taps within 1.5s on whatever this is attached to fires the egg —
-// works for a mouse click same as a touch tap, no separate mobile path needed.
-function useTapTrigger(count = 5, windowMs = 1500) {
-  const taps = useRef([])
-  return () => {
-    const now = Date.now()
-    taps.current = [...taps.current, now].filter(t => now - t < windowMs)
-    if (taps.current.length >= count) {
-      taps.current = []
-      window.dispatchEvent(new Event(EASTER_EGG_EVENT))
-    }
-  }
-}
-
 
 /**
  * Account state, top right. Sign-in is optional everywhere in this app, so this
@@ -124,7 +109,18 @@ function AccountRail({ onOpenAuth }) {
 export default function App() {
   const [source, setSource] = useState(null) // { url, type: 'image' | 'video' }
   const [authOpen, setAuthOpen] = useState(false)
-  const onLogoTap = useTapTrigger()
+
+  // The wordmark doubles as the way home once media is loaded — same thing
+  // Eject does, in the place every other site puts its logo.
+  const logoContent = (
+    <>
+      <img src="/logo_mark.png" alt="" className="logo-mark" />
+      <span className="glitch-text" data-text="STATICGRIND">
+        STATIC<span>GRIND</span>
+      </span>
+      {!source && <img src="/logo_mark.png" alt="" className="logo-mark" />}
+    </>
+  )
 
   return (
     <>
@@ -152,12 +148,18 @@ export default function App() {
       <div className={source ? 'app workspace' : 'app landing'}>
         {!source && <AccountRail onOpenAuth={() => setAuthOpen(true)} />}
         <header className="app-header">
-          <h1 className="logo" onClick={onLogoTap}>
-            <img src="/logo_mark.png" alt="" className="logo-mark" />
-            <span className="glitch-text" data-text="STATICGRIND">
-              STATIC<span>GRIND</span>
-            </span>
-            {!source && <img src="/logo_mark.png" alt="" className="logo-mark" />}
+          <h1 className="logo">
+            {source ? (
+              <button
+                type="button"
+                className="logo-home"
+                onClick={() => setSource(null)}
+                title="Back to the start"
+                aria-label="StaticGrind — back to the start"
+              >
+                {logoContent}
+              </button>
+            ) : logoContent}
           </h1>
           <p className="tagline">
             {source ? 'digital lathe' : <Typewriter text="digital lathe" />}

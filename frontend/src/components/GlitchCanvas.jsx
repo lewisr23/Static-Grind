@@ -6,6 +6,7 @@ import { CpuPass } from '../effects/client'
 import { IconShuffle, IconDie, IconUndo, IconEject, IconCamera, IconRecordDot, IconDownload, IconPlay, IconPause, IconSave } from './icons'
 import { useAuth } from '../auth/AuthProvider'
 import { usePresetBank, MAX_NAME } from '../presets/usePresetBank'
+import { fireEasterEgg, createStopToStopWatcher } from '../easterEgg'
 
 const DEFAULT_PARAMS = {
   colorGrade: 'none',
@@ -174,6 +175,43 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
   // a knob in. With Math.random the block and tear placement reshuffled on every
   // single nudge, so there was no way to converge on a look.
   const [seed, setSeed] = useState(() => (Math.random() * 0xffffffff) >>> 0)
+  // Knobs the user has pinned. A locked knob won't move for a drag, and
+  // nothing that rewrites the whole patch — Random, Clear, a preset — is
+  // allowed to touch it either. That's the point: keep the one setting you
+  // like and go on rolling the rest.
+  const [lockedKeys, setLockedKeys] = useState([])
+  const lockTargetRef = useRef(null)  // knob under the pointer, or focused
+
+  // Ctrl on its own — pressed and released with nothing in between — locks
+  // whichever knob is under the pointer or focused. Watching keyup rather than
+  // keydown is what keeps Ctrl+C, Ctrl+Z and every other shortcut working:
+  // anything pressed while Ctrl is held disarms it.
+  useEffect(() => {
+    let armed = false
+    const disarm = () => { armed = false }
+    function onKeyDown(e) {
+      if (e.key === 'Control') { if (!e.repeat) armed = true; return }
+      armed = false
+    }
+    function onKeyUp(e) {
+      if (e.key !== 'Control') return
+      const fire = armed && lockTargetRef.current
+      armed = false
+      if (!fire) return
+      const key = lockTargetRef.current
+      setLockedKeys(keys => keys.includes(key) ? keys.filter(k => k !== key) : [...keys, key])
+    }
+    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('keyup', onKeyUp)
+    window.addEventListener('blur', disarm)
+    window.addEventListener('pointerdown', disarm)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('keyup', onKeyUp)
+      window.removeEventListener('blur', disarm)
+      window.removeEventListener('pointerdown', disarm)
+    }
+  }, [])
 
   useEffect(() => { paramsRef.current = params }, [params])
   useEffect(() => { seedRef.current = seed; dirtyRef.current = true }, [seed])
@@ -361,13 +399,20 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
     }
   }, [sourceUrl, sourceType])
 
+  // Slamming Pixel Sort from 0 to 100 and back three times inside five
+  // seconds is the way into the egg that works without a keyboard.
+  const sortWatcherRef = useRef(null)
+  if (!sortWatcherRef.current) {
+    sortWatcherRef.current = createStopToStopWatcher(0, 1, fireEasterEgg)
+  }
+
   const { status: authStatus, user } = useAuth()
   const bank = usePresetBank(authStatus, user?.id)
 
   function loadSaved(preset) {
     setSelectedPreset('')
     setSelectedSavedId(preset.id)
-    setParams({ ...DEFAULT_PARAMS, ...preset.params })
+    applyParams({ ...DEFAULT_PARAMS, ...preset.params })
     // A saved preset carries the seed it was saved with, so the corruption
     // lands exactly where it did when you liked it. Without this the knobs
     // come back but the look doesn't.
@@ -407,7 +452,22 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
   const RESEEDABLE = ['rowShift', 'blockGlitch', 'smear', 'melt']
   const canReseed = RESEEDABLE.some(key => params[key] > 0)
 
-  function set(key, value) { setParams(p => ({ ...p, [key]: value })) }
+  function set(key, value) {
+    if (lockedKeys.includes(key)) return
+    if (key === 'pixelSort') sortWatcherRef.current(value)
+    setParams(p => ({ ...p, [key]: value }))
+  }
+
+  // Whole-patch changes — Random, Clear, any preset — go through here so a
+  // locked knob holds its value instead of being overwritten.
+  function applyParams(next) {
+    setParams(prev => {
+      if (lockedKeys.length === 0) return next
+      const merged = { ...next }
+      for (const key of lockedKeys) merged[key] = prev[key]
+      return merged
+    })
+  }
 
   function handleRandomize() {
     const rnd = (min, max, int = false) => {
@@ -418,7 +478,7 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
     const grades = ['none', 'vhs', 'neon', 'grayscale', 'infrared']
     setSelectedPreset('')
     setSeed((Math.random() * 0xffffffff) >>> 0)
-    setParams({
+    applyParams({
       colorGrade:       grades[Math.floor(Math.random() * grades.length)],
       hueShift:         maybe(0.6, 0, 340, true),
       saturation:       Math.random() < 0.5 ? rnd(-0.8, 0.8) : 0,
@@ -669,7 +729,12 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
   // so this is the only thing that changes between the sections.
   const knobsFor = cat => MOD_CONFIG.filter(c => c.cat === cat).map(cfg => (
     <Knob key={cfg.key} label={cfg.label} cat={cfg.cat} min={cfg.min} max={cfg.max} def={cfg.def}
-      step={cfg.step} display={cfg.display} value={params[cfg.key]} onChange={v => set(cfg.key, v)} />
+      step={cfg.step} display={cfg.display} value={params[cfg.key]} onChange={v => set(cfg.key, v)}
+      locked={lockedKeys.includes(cfg.key)}
+      onAim={on => {
+        if (on) lockTargetRef.current = cfg.key
+        else if (lockTargetRef.current === cfg.key) lockTargetRef.current = null
+      }} />
   ))
 
   return (
@@ -770,7 +835,7 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
           </div>
 
           <div className="transport-group transport-actions">
-            <button className="console-btn" onClick={handleRandomize}><IconShuffle /> Random</button>
+            <button className="console-btn" onClick={handleRandomize} title="Roll every knob that isn't locked"><IconShuffle /> Random</button>
             <button
               className="console-btn"
               onClick={() => setSeed((Math.random() * 0xffffffff) >>> 0)}
@@ -781,7 +846,7 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
             >
               <IconDie /> Reseed
             </button>
-            <button className="console-btn" onClick={() => { setParams(DEFAULT_PARAMS); setSelectedPreset(''); setSelectedSavedId('') }}><IconUndo /> Clear</button>
+            <button className="console-btn" onClick={() => { applyParams(DEFAULT_PARAMS); setSelectedPreset(''); setSelectedSavedId('') }}><IconUndo /> Clear</button>
             <button className="console-btn" onClick={onReset} title="Load different media"><IconEject /> Eject</button>
           </div>
         </div>
@@ -814,7 +879,7 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
           <div className="chip-row chip-row-tight">
             <button
               className={`chip${selectedPreset === '' ? ' active' : ''}`}
-              onClick={() => { setSelectedPreset(''); setSelectedSavedId(''); setParams(DEFAULT_PARAMS) }}
+              onClick={() => { setSelectedPreset(''); setSelectedSavedId(''); applyParams(DEFAULT_PARAMS) }}
             >
               None
             </button>
@@ -822,7 +887,7 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
               <button
                 key={key}
                 className={`chip${selectedPreset === key ? ' active' : ''}`}
-                onClick={() => { setSelectedPreset(key); setSelectedSavedId(''); setParams({ ...DEFAULT_PARAMS, ...PRESETS[key] }) }}
+                onClick={() => { setSelectedPreset(key); setSelectedSavedId(''); applyParams({ ...DEFAULT_PARAMS, ...PRESETS[key] }) }}
               >
                 {PRESET_LABELS[key]}
               </button>
@@ -913,7 +978,7 @@ function knobPoint(cx, cy, r, angleDeg) {
 // 23 segments across the 270° sweep, evenly spaced from stop to stop.
 const KNOB_SEG_ANGLES = Array.from({ length: 23 }, (_, i) => -135 + (i * KNOB_SWEEP) / 22)
 
-function Knob({ label, value, min, max, step, def = min, display, cat, onChange }) {
+function Knob({ label, value, min, max, step, def = min, display, cat, onChange, locked = false, onAim }) {
   const [editing, setEditing] = useState(false)
   const [inputVal, setInputVal] = useState('')
   const dialRef = useRef(null)
@@ -934,6 +999,9 @@ function Knob({ label, value, min, max, step, def = min, display, cat, onChange 
     e.preventDefault()
     e.currentTarget.setPointerCapture(e.pointerId)
     dialRef.current?.focus()
+    // A locked knob still takes focus — you need it focused to Ctrl it back
+    // open — it just doesn't start a drag.
+    if (locked) return
     dragRef.current = { y: e.clientY, raw: value }
   }
 
@@ -955,6 +1023,7 @@ function Knob({ label, value, min, max, step, def = min, display, cat, onChange 
   }
 
   function onKeyDown(e) {
+    if (locked) return
     const coarse = Math.max(step, (max - min) / 40)
     const inc = e.shiftKey ? step : coarse
     if (e.key === 'ArrowUp' || e.key === 'ArrowRight') { e.preventDefault(); onChange(quantize(value + inc)) }
@@ -974,15 +1043,18 @@ function Knob({ label, value, min, max, step, def = min, display, cat, onChange 
     if (!el) return
     const onWheel = e => {
       if (document.activeElement !== el) return
+      // A locked knob doesn't swallow the wheel — let the rail scroll past it.
+      if (locked) return
       e.preventDefault()
       const inc = (e.shiftKey ? step : Math.max(step, (max - min) / 40)) * (e.deltaY < 0 ? 1 : -1)
       onChange(quantize(value + inc))
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
-  }, [value, min, max, step, onChange])
+  }, [value, min, max, step, onChange, locked])
 
   function handleValueClick() {
+    if (locked) return
     setInputVal(String(max <= 1 ? Math.round(value * 100) : value))
     setEditing(true)
   }
@@ -996,24 +1068,33 @@ function Knob({ label, value, min, max, step, def = min, display, cat, onChange 
   const valueText = display(value)
 
   return (
-    <div className={`knob-unit cat-${cat}${active ? ' active' : ''}`}>
+    <div className={`knob-unit cat-${cat}${active ? ' active' : ''}${locked ? ' locked' : ''}`}>
       <div
         ref={dialRef}
         className="knob-dial"
         role="slider"
         tabIndex={0}
-        aria-label={label}
+        aria-label={locked ? `${label} (locked)` : label}
         aria-valuemin={min}
         aria-valuemax={max}
         aria-valuenow={value}
         aria-valuetext={valueText}
+        aria-readonly={locked || undefined}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
+        onPointerEnter={() => onAim?.(true)}
+        // Focus outlives the pointer: a knob you tabbed to stays the Ctrl
+        // target after the mouse wanders off it.
+        onPointerLeave={() => { if (document.activeElement !== dialRef.current) onAim?.(false) }}
+        onFocus={() => onAim?.(true)}
+        onBlur={() => onAim?.(false)}
         onKeyDown={onKeyDown}
-        onDoubleClick={() => onChange(def)}
-        title="Drag or scroll to turn · hold Shift for fine · double-click to reset"
+        onDoubleClick={() => { if (!locked) onChange(def) }}
+        title={locked
+          ? 'Locked — Random, Clear and presets leave it alone · press Ctrl to unlock'
+          : 'Drag or scroll to turn · hold Shift for fine · double-click to reset · press Ctrl to lock'}
       >
         <svg className="knob-svg" viewBox="0 0 64 64">
           {/* Segment ring: a bar-graph meter wrapped around the cap. Segments
@@ -1041,6 +1122,14 @@ function Knob({ label, value, min, max, step, def = min, display, cat, onChange 
             return <line x1={ix0} y1={iy0} x2={ix1} y2={iy1} className="knob-notch" />
           })()}
         </svg>
+        {/* Lock badge rides outside the ring rather than over the cap, so it
+            never sits on top of the notch you're trying to read. */}
+        {locked && (
+          <svg className="knob-lock" viewBox="0 0 12 12" aria-hidden="true">
+            <rect x="2.5" y="5.5" width="7" height="5.5" rx="1" />
+            <path d="M4 5.5V4a2 2 0 0 1 4 0v1.5" fill="none" />
+          </svg>
+        )}
       </div>
       <span className="knob-label">{label}</span>
       {editing ? (
