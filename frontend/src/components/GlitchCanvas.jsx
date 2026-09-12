@@ -7,6 +7,7 @@ import { IconShuffle, IconDie, IconUndo, IconEject, IconCamera, IconRecordDot, I
 import { useAuth } from '../auth/AuthProvider'
 import { usePresetBank, MAX_NAME } from '../presets/usePresetBank'
 import { fireEasterEgg, createStopToStopWatcher } from '../easterEgg'
+import { saveFileNative } from '../platform/native'
 
 const DEFAULT_PARAMS = {
   colorGrade: 'none',
@@ -113,6 +114,15 @@ const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
 const RECORD_FORMATS = IS_IOS ? ['webm'] : ['webm', 'mp4']
 
 async function saveFile(blob, filename, mimeType) {
+  // Android app first. Neither branch below works inside a WebView: Web Share
+  // isn't implemented there, so canShare is undefined, and `<a download>` is
+  // silently inert. Returns false in a browser, so the web path is unchanged.
+  try {
+    if (await saveFileNative(blob, filename, mimeType)) return
+  } catch (err) {
+    console.warn('Native save failed, falling back:', err)
+  }
+
   const file = new File([blob], filename, { type: mimeType })
   if (navigator.canShare?.({ files: [file] })) {
     try {

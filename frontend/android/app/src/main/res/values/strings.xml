@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Static Grind</string>
+    <string name="title_activity_main">Static Grind</string>
+    <string name="package_name">com.staticgrind.app</string>
+    <string name="custom_url_scheme">com.staticgrind.app</string>
+</resources>

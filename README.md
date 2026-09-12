@@ -97,6 +97,74 @@ long-lived caching on the fingerprinted assets plus a few basic security headers
 picked up automatically. Note the webcam source needs HTTPS, which Cloudflare provides by
 default.
 
+## The Android app
+
+`frontend/android/` is a Capacitor shell around the same bundle the website
+runs. The pipeline needs no porting: Android's WebView is Chrome underneath, so
+the WebGL pass, the ES-module worker, the WASM crate, `MediaRecorder` and
+WebCodecs all run there unchanged.
+
+What did need work was the three places a WebView is not a browser.
+
+`<a download>` does nothing at all inside a WebView. No file, no error, no
+visible result. `navigator.share`, which the web build falls back to for
+iOS, isn't implemented there either, because Web Share is a Chrome feature
+rather than a WebView one. So the app branch writes the blob to the cache
+directory and hands it to the system share sheet instead. `src/platform/native.js`
+holds that, along with the status bar and splash. Nothing in it is reachable
+from the web build: `isNative()` is false in a browser and the Capacitor
+packages are only ever pulled in through dynamic `import()` behind a native
+branch, so Vite splits them into chunks the site never downloads. The web
+bundle grew 2.5KB.
+
+The webcam source needs `CAMERA` in the manifest before the WebView will grant
+`getUserMedia`. The camera is declared `required="false"` so the Play listing
+doesn't exclude every device without one. Those still open image and video
+files, and the UI already handles the webcam being unavailable.
+
+`androidScheme` is `https`, which serves the WebView from `https://localhost`.
+That's a secure context, which `getUserMedia` and WebCodecs both require. It
+also broke the accounts check. `accountsAvailable` treated hostname `localhost`
+as "a dev machine, the Spring server is probably up", which is true on a laptop
+and false on a phone, where localhost is the phone. The app was firing auth
+requests at itself on launch. In the app, accounts exist only when
+`VITE_API_URL` was set at build time.
+
+```bash
+npm run android:debug
+```
+
+That builds the web bundle, syncs it into the Android project and assembles a
+debug APK, about 4.2MB. It needs the Android SDK (platform 35 and build-tools
+35) on top of the JDK 17 Gradle already wants, and `android/local.properties`
+pointing at the SDK, which is gitignored so each machine sets its own.
+
+Capacitor 6 scaffolds the project at compile and target SDK 34. That was bumped
+to 35, because Play has required target 35 for new apps since August 2025 and a
+34 build is rejected at upload. Compiling against 35 needs Android Gradle Plugin
+8.6 or newer, so the AGP went 8.2.1 to 8.6.1 and the Gradle wrapper 8.2.1 to
+8.7 alongside it. `npm run
+android:open` opens the project in Android Studio instead, and `npm run
+android:aab` produces the signed-release bundle Play takes.
+
+## The phone layout
+
+Stacked in one column, the picture scrolled off the top while you were turning
+the knob that changes it, which for a live tool is the whole point gone. On the
+web you could scroll back; in an app there's no URL bar to give the space back.
+
+So on phones the picture stops participating in flow entirely. It's fixed
+behind everything, and the controls ride over it in a sheet that scrolls inside
+itself, which means the page never scrolls and the picture is never not
+visible. The tab strip sticks to the sheet's top edge so switching group
+doesn't cost a scroll, and the five transport actions moved into a fixed bottom
+bar. They were wrapping to three rows, which cost 236px of the 740 a common
+Android phone has.
+
+All of it lives in a `max-width: 700px` block. The three-column desk and the
+700–1100 single-column band are untouched.
+
 ## Status
 
-Feature-complete. Mobile layout is still rough.
+Feature-complete on desktop and phone. The Android app builds and runs; it is
+not on the Play Store yet.

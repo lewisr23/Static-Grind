@@ -8,14 +8,25 @@
     "build": "vite build",
     "preview": "vite preview",
     "curve-check": "node scripts/curve-check.mjs",
-    "build:wasm": "cargo build --manifest-path ../wasm/Cargo.toml --release --target wasm32-unknown-unknown && wasm-bindgen --target web --out-dir wasm/pkg --out-name staticgrind_effects ../wasm/target/wasm32-unknown-unknown/release/staticgrind_effects.wasm"
+    "build:wasm": "cargo build --manifest-path ../wasm/Cargo.toml --release --target wasm32-unknown-unknown && wasm-bindgen --target web --out-dir wasm/pkg --out-name staticgrind_effects ../wasm/target/wasm32-unknown-unknown/release/staticgrind_effects.wasm",
+    "android:sync": "npm run build && cap sync android",
+    "android:open": "cap open android",
+    "android:debug": "npm run android:sync && cd android && gradlew.bat assembleDebug",
+    "android:aab": "npm run android:sync && cd android && gradlew.bat bundleRelease"
   },
   "dependencies": {
+    "@capacitor/android": "^6.2.2",
+    "@capacitor/core": "^6.2.2",
+    "@capacitor/filesystem": "^6.0.4",
+    "@capacitor/share": "^6.0.4",
+    "@capacitor/splash-screen": "^6.0.4",
+    "@capacitor/status-bar": "^6.0.3",
     "mp4-muxer": "^5.2.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@capacitor/cli": "^6.2.2",
     "@types/react": "^18.3.1",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.1",

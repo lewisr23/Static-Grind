@@ -5,6 +5,8 @@
 // header. Everything else here is turning responses into either data or a typed
 // error the UI can branch on.
 
+import { isNative } from '../platform/native'
+
 const BASE = (import.meta.env.VITE_API_URL || 'http://localhost:8080').replace(/\/+$/, '')
 
 /**
@@ -15,10 +17,17 @@ const BASE = (import.meta.env.VITE_API_URL || 'http://localhost:8080').replace(/
  * request at the visitor's own machine, get blocked as mixed content, and then
  * report itself "offline" as though a server were having a bad day. There is no
  * server. Better to know that up front and not ask.
+ *
+ * The localhost half of that test has to exclude the Android app. Capacitor
+ * serves the WebView from https://localhost, so the hostname check would pass
+ * there on every device — and "localhost" on a phone is the phone, not a dev
+ * machine with a Spring server on :8080. Without the guard the app fires auth
+ * requests at itself on launch. In the app, accounts exist only when
+ * VITE_API_URL was actually set at build time.
  */
 export const accountsAvailable =
   Boolean(import.meta.env.VITE_API_URL) ||
-  /^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname)
+  (!isNative() && /^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname))
 
 /** The server answered, and said no. `fields` is populated for validation failures. */
 export class ApiError extends Error {
