@@ -16,6 +16,21 @@ export function isNative() {
     && window.Capacitor?.isNativePlatform?.() === true
 }
 
+/*
+ * Marks the document as the Android app so CSS can target it.
+ *
+ * The phone sheet layout is for the app only. The website's phone layout is
+ * whatever it was before the app existed and stays that way, so nothing done
+ * for the app can reach staticgrind.com.
+ *
+ * Runs at module scope rather than inside a component: Capacitor injects its
+ * global before any app code, and this has to land before first paint or the
+ * app would flash the website's layout on every launch.
+ */
+if (isNative()) {
+  document.documentElement.classList.add('native-app')
+}
+
 /**
  * FileReader gives back a `data:<mime>;base64,<payload>` URL; Filesystem wants
  * the payload on its own. Chunking a big Uint8Array through String.fromCharCode

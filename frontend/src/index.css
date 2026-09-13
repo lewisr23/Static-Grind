@@ -1428,10 +1428,13 @@ body {
   }
 }
 
-/* ── Phone: the sheet ──
-   Everything below is phone-only and deliberately sits after the ≤1100px
-   block so it overrides it. Desktop and the 700–1100 narrow band are
-   untouched by any of it.
+/* ── The app on a phone: the sheet ──
+   Every rule below is gated on .native-app, the class native.js puts on
+   <html> when Capacitor reports a native shell, so the sheet is the app's
+   layout and nothing else. The website on a phone keeps the single-column
+   layout it had before the app existed. The block still sits after the
+   ≤1100px one so it overrides it where it does apply; desktop and the
+   700–1100 narrow band are untouched either way.
 
    The problem this solves: stacked in one column, the picture scrolls off
    the top while you're turning the knob that changes it, which for a live
@@ -1444,7 +1447,7 @@ body {
    display: contents here, which drops their children into the workspace's
    own flex box, and `order` puts them in sheet order from there. */
 @media (max-width: 700px) {
-  .app.workspace {
+  .native-app .app.workspace {
     /* Where the sheet's top edge sits, and so how much of the screen the
        picture gets. Both are phone-only — nothing above 700px reads them.
        The sheet and the picture are both position: fixed, so they take their
@@ -1475,7 +1478,7 @@ body {
      Sticky does the same job with none of that: it keeps the element in
      normal flow, so it reserves its own space and needs no arithmetic, and
      it pins without ever leaving the scroller it lives in. */
-  .glitch-workspace {
+  .native-app .glitch-workspace {
     display: flex;
     flex-direction: column;
     /* The base rule's `start` would shrink every row to its content width. */
@@ -1485,13 +1488,13 @@ body {
   }
 
   /* Dissolve both wrappers so their children become sheet-orderable siblings. */
-  .console-display,
-  .rail {
+  .native-app .console-display,
+  .native-app .rail {
     display: contents;
   }
 
   /* ── The picture: sticky at the top, controls scroll under it ── */
-  .canvas-wrapper {
+  .native-app .canvas-wrapper {
     order: 1;
     position: sticky;
     top: 0;
@@ -1502,16 +1505,16 @@ body {
     background: #000;
   }
 
-  .canvas-wrapper canvas {
+  .native-app .canvas-wrapper canvas {
     max-height: 100%;
     max-width: 100%;
     object-fit: contain;
   }
 
   /* ── The sheet ── */
-  .transport,
-  .mobile-tabs,
-  .console-section {
+  .native-app .transport,
+  .native-app .mobile-tabs,
+  .native-app .console-section {
     position: relative;
     z-index: 1;
     /* Sheet contents sit above an opaque picture, so they need their own
@@ -1528,7 +1531,7 @@ body {
 
   /* The tab strip is the sheet's head: it stays put while the knobs scroll
      under it, so switching group never means scrolling back up. */
-  .mobile-tabs {
+  .native-app .mobile-tabs {
     order: 2;
     position: sticky;
     /* Sticks directly beneath the picture, which is pinned at 0 and is
@@ -1545,7 +1548,7 @@ body {
   }
 
   /* The grab handle — the affordance that says this panel moves. */
-  .mobile-tabs::before {
+  .native-app .mobile-tabs::before {
     content: '';
     position: absolute;
     top: 0.35rem;
@@ -1566,7 +1569,7 @@ body {
      Snap, and a video adds Play/Pause on top of that. Sizing each to an equal
      share only works for the five-button case, and at six the two buttons
      that share .download-wrap were overlapping each other. */
-  .transport {
+  .native-app .transport {
     order: 3;
     position: fixed;
     left: 0;
@@ -1589,17 +1592,17 @@ body {
      format picker hangs off, and display: contents would drop the picker
      onto the page instead. It holds one button for an image source and two
      for a webcam, so it sizes to its contents rather than to a fixed share. */
-  .transport .transport-group {
+  .native-app .transport .transport-group {
     display: contents;
   }
 
-  .transport .download-wrap {
+  .native-app .transport .download-wrap {
     flex: 0 0 auto;
     display: flex;
     gap: 0.25rem;
   }
 
-  .transport .console-btn {
+  .native-app .transport .console-btn {
     flex: 0 0 auto;
     justify-content: center;
     padding: 0.55rem 0.5rem;
@@ -1608,44 +1611,44 @@ body {
     white-space: nowrap;
   }
 
-  .transport::-webkit-scrollbar {
+  .native-app .transport::-webkit-scrollbar {
     display: none;
   }
 
   /* The [ ] decoration is drawn outside the button's own box, so in a row
      that already divides 360px five ways it overhangs the screen edges.
      The border is doing the same job here anyway. */
-  .transport .console-btn::before,
-  .transport .console-btn::after {
+  .native-app .transport .console-btn::before,
+  .native-app .transport .console-btn::after {
     content: none;
   }
 
   /* Four tabs, one row, no wrapping — each takes an equal quarter. */
-  .mobile-tabs .chip {
+  .native-app .mobile-tabs .chip {
     flex: 1 1 0;
     min-width: 0;
     padding: 0.5rem 0.2rem;
     text-align: center;
   }
 
-  .console-section {
+  .native-app .console-section {
     order: 4;
     padding: 0.9rem 0.75rem 1.1rem;
   }
 
   /* The last section has to scroll clear of the fixed action bar, or its
      bottom knob row sits permanently underneath it. */
-  .console-section:last-of-type {
+  .native-app .console-section:last-of-type {
     padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
   }
 
-  .console-section + .console-section {
+  .native-app .console-section + .console-section {
     border-top: 0;
     padding-top: 0;
   }
 
   /* Four across is too tight to hit; three is the same as the desk. */
-  .knob-row {
+  .native-app .knob-row {
     grid-template-columns: repeat(3, 1fr);
     gap: 0.75rem 0.2rem;
   }
@@ -1653,11 +1656,11 @@ body {
   /* At 360px a third of the row is ~110px, which "Sort Vertical" and
      "Channel Sort" both overrun — they ran into their neighbours. Let the
      label wrap onto a second line instead of bleeding sideways. */
-  .knob-unit {
+  .native-app .knob-unit {
     min-width: 0;
   }
 
-  .knob-label {
+  .native-app .knob-label {
     font-size: 0.58rem;
     line-height: 1.25;
     white-space: normal;
@@ -1670,7 +1673,7 @@ body {
 /* Short phones: give the sheet more of the screen, since a 240px picture is
    still perfectly readable and the knobs are what run out of room. */
 @media (max-width: 700px) and (max-height: 700px) {
-  .app.workspace {
+  .native-app .app.workspace {
     --sheet-top: 40vh;
     --sheet-top: 40dvh;
   }

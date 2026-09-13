@@ -147,13 +147,13 @@ to 35, because Play has required target 35 for new apps since August 2025 and a
 android:open` opens the project in Android Studio instead, and `npm run
 android:aab` produces the signed-release bundle Play takes.
 
-## The phone layout
+## The phone layout in the app
 
 Stacked in one column, the picture scrolled off the top while you were turning
 the knob that changes it, which for a live tool is the whole point gone. On the
 web you could scroll back; in an app there's no URL bar to give the space back.
 
-So on phones the picture stops participating in flow entirely. It's fixed
+So in the app the picture stops participating in flow entirely. It's fixed
 behind everything, and the controls ride over it in a sheet that scrolls inside
 itself, which means the page never scrolls and the picture is never not
 visible. The tab strip sticks to the sheet's top edge so switching group
@@ -161,8 +161,12 @@ doesn't cost a scroll, and the five transport actions moved into a fixed bottom
 bar. They were wrapping to three rows, which cost 236px of the 740 a common
 Android phone has.
 
-All of it lives in a `max-width: 700px` block. The three-column desk and the
-700–1100 single-column band are untouched.
+All of it lives in a `max-width: 700px` block whose every rule is gated on
+`.native-app`, a class `platform/native.js` adds to `<html>` when Capacitor
+reports a native shell. So this is the app's layout and nothing else: on a
+phone browser staticgrind.com keeps the single-column layout it had before the
+app existed, and the three-column desk and the 700–1100 band are untouched
+everywhere.
 
 ## Status
 
