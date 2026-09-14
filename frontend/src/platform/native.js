@@ -57,10 +57,16 @@ function blobToBase64(blob) {
  * to catch it either, because Web Share is a Chrome feature rather than a
  * WebView one, so the web path's share-first branch never fires here.
  *
- * So the file is written to the app's cache directory and handed to the system
- * share sheet, which is what lets the user put it in Photos, Drive, a message,
- * or anywhere else. Cache rather than Documents on purpose: nothing here is the
- * user's library, it's a hand-off, and Android is free to reclaim it later.
+ * So the file goes to the gallery, through the MediaSaver plugin in
+ * android/app/src/main/java. Hitting Snap is a save: the picture belongs in the
+ * same place as everything else the phone's camera makes, with no sheet asking
+ * where to put it first.
+ *
+ * Two hops rather than one, because Filesystem only speaks base64 and the
+ * plugin only speaks files: the bytes land in the cache directory, the plugin
+ * streams that copy into the gallery, and the cache copy goes. Cache is right
+ * for a staging post — Android can reclaim it whenever it likes, and by then
+ * the real file is somewhere else.
  *
  * Returns true when it handled the save, false to let the caller fall through
  * to the web path.
@@ -68,10 +74,12 @@ function blobToBase64(blob) {
 export async function saveFileNative(blob, filename, mimeType) {
   if (!isNative()) return false
 
-  const [{ Filesystem, Directory }, { Share }] = await Promise.all([
+  const [{ Filesystem, Directory }, { registerPlugin }] = await Promise.all([
     import('@capacitor/filesystem'),
-    import('@capacitor/share'),
+    import('@capacitor/core'),
   ])
+
+  const MediaSaver = registerPlugin('MediaSaver')
 
   const data = await blobToBase64(blob)
   const { uri } = await Filesystem.writeFile({
@@ -81,20 +89,12 @@ export async function saveFileNative(blob, filename, mimeType) {
   })
 
   try {
-    await Share.share({
-      title: filename,
-      // Android ignores `text` when files are attached on most targets, but
-      // the ones that do show it get something better than a bare filename.
-      text: 'Made with Static Grind',
-      url: uri,
-      dialogTitle: 'Save or share',
-    })
-  } catch (err) {
-    // Dismissing the sheet throws here. That isn't a failure — the file is
-    // already written, and reporting it would fire the caller's error path
-    // for something the user did on purpose.
-    if (/cancel/i.test(err?.message ?? '')) return true
-    throw err
+    await MediaSaver.save({ uri, filename, mimeType })
+  } finally {
+    // Best effort: a leftover cache file is tidied by Android eventually, and
+    // failing the save over the cleanup would be the wrong way round.
+    await Filesystem.deleteFile({ path: filename, directory: Directory.Cache })
+      .catch(() => {})
   }
 
   return true

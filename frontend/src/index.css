@@ -1053,6 +1053,48 @@ body {
   50% { opacity: 0; }
 }
 
+/* ── Save note ──
+   In the app a save goes straight to the gallery with no sheet, no download
+   shelf, nothing: without this the only difference between a saved picture
+   and a broken button is that neither of them did anything visible. */
+.save-note {
+  position: fixed;
+  left: 50%;
+  bottom: 1.5rem;
+  transform: translateX(-50%);
+  z-index: 60;
+  max-width: calc(100vw - 2rem);
+  padding: 0.6rem 1rem;
+  background: #0b0b0b;
+  border: 1px solid rgba(var(--red-rgb), 0.55);
+  border-radius: 3px;
+  box-shadow: 0 0 24px rgba(0, 0, 0, 0.8);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text);
+  text-align: center;
+  pointer-events: none;
+  /* Its own keyframes rather than the shared riseIn: that one ends on
+     transform: none, which with fill both wipes the centring off again. */
+  animation: saveNoteIn 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes saveNoteIn {
+  from { opacity: 0; transform: translate(-50%, 8px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.save-note-bad {
+  border-color: rgba(var(--red-rgb), 0.9);
+  color: var(--red);
+  /* A failure is worth reading properly, and the reason can be a sentence. */
+  letter-spacing: 0.1em;
+  text-transform: none;
+  font-size: 0.68rem;
+}
+
 /* ── Reduced Motion ── */
 @media (prefers-reduced-motion: reduce) {
   .app-header,
@@ -1062,7 +1104,8 @@ body {
   .drop-zone.dragging,
   .camera-btn:hover,
   .crt-overlay,
-  .blink {
+  .blink,
+  .save-note {
     animation: none !important;
   }
 
@@ -1407,6 +1450,38 @@ body {
 /* Phone-width header: no room for the tagline or the readout next to the
    logo, and the readout still shows on the landing screen anyway. */
 @media (max-width: 700px) {
+  /* The landing logo is two 48px marks either side of a 2.5rem wordmark, which
+     comes to about 380px and so overran every phone made. .app-header clips
+     rather than scrolls, so what that looked like was both marks sliced in
+     half down the middle. Tying all three to the viewport keeps the row whole
+     at any width instead of picking a breakpoint per phone. */
+  .app.landing .logo {
+    font-size: min(2.5rem, 9vw);
+    gap: 0.5rem;
+  }
+
+  .app.landing .logo-mark {
+    width: min(48px, 9vw);
+    height: min(48px, 9vw);
+  }
+
+  /* Two fixed corner labels at 0.68rem with 0.22em tracking meet in the middle
+     of a 360px screen, so PRIVACY and the readout were printing over each
+     other. Tighter type buys the bottom pair room too, and the readout is the
+     one of the four that's pure decoration, so on a phone it goes. */
+  .hud {
+    font-size: 0.58rem;
+    letter-spacing: 0.14em;
+  }
+
+  .hud-tr {
+    display: none;
+  }
+
+  .hud-tl { top: 12px; left: 14px; }
+  .hud-bl { bottom: 12px; left: 14px; }
+  .hud-br { bottom: 12px; right: 14px; }
+
   .app.workspace .tagline,
   .header-right .preset-readout {
     display: none;
@@ -1613,6 +1688,11 @@ body {
 
   .native-app .transport::-webkit-scrollbar {
     display: none;
+  }
+
+  /* Clear of the fixed action bar, or the note lands on top of the buttons. */
+  .native-app .save-note {
+    bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
   }
 
   /* The [ ] decoration is drawn outside the button's own box, so in a row

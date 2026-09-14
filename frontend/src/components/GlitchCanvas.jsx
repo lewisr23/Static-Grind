@@ -7,7 +7,7 @@ import { IconShuffle, IconDie, IconUndo, IconEject, IconCamera, IconRecordDot, I
 import { useAuth } from '../auth/AuthProvider'
 import { usePresetBank, MAX_NAME } from '../presets/usePresetBank'
 import { fireEasterEgg, createStopToStopWatcher } from '../easterEgg'
-import { saveFileNative } from '../platform/native'
+import { isNative, saveFileNative } from '../platform/native'
 
 const DEFAULT_PARAMS = {
   colorGrade: 'none',
@@ -113,23 +113,36 @@ const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
   || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 const RECORD_FORMATS = IS_IOS ? ['webm'] : ['webm', 'mp4']
 
+/**
+ * Returns a line to put on screen, or null when the platform already shows the
+ * user what happened. A browser download announces itself — the download shelf,
+ * the share sheet, the file appearing — but the app's gallery save is silent by
+ * design, so it has to say so itself, and so does a failure.
+ */
 async function saveFile(blob, filename, mimeType) {
   // Android app first. Neither branch below works inside a WebView: Web Share
   // isn't implemented there, so canShare is undefined, and `<a download>` is
   // silently inert. Returns false in a browser, so the web path is unchanged.
   try {
-    if (await saveFileNative(blob, filename, mimeType)) return
+    if (await saveFileNative(blob, filename, mimeType)) {
+      return { ok: true, text: 'Saved to your gallery' }
+    }
   } catch (err) {
-    console.warn('Native save failed, falling back:', err)
+    console.warn('Native save failed:', err)
+    // In the app there is nothing to fall back to, both branches below being
+    // inert in a WebView, so the error is the whole result.
+    if (isNative()) {
+      return { ok: false, text: err?.message || 'Could not save to your gallery' }
+    }
   }
 
   const file = new File([blob], filename, { type: mimeType })
   if (navigator.canShare?.({ files: [file] })) {
     try {
       await navigator.share({ files: [file] })
-      return
+      return null
     } catch (err) {
-      if (err.name === 'AbortError') return // user dismissed the share sheet
+      if (err.name === 'AbortError') return null // user dismissed the share sheet
       console.warn('Share failed, falling back to direct download:', err)
     }
   }
@@ -139,6 +152,7 @@ async function saveFile(blob, filename, mimeType) {
   a.href = url
   a.click()
   URL.revokeObjectURL(url)
+  return null
 }
 
 export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
@@ -419,6 +433,21 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
   const { status: authStatus, user } = useAuth()
   const bank = usePresetBank(authStatus, user?.id)
 
+  // What the last save did, when the platform doesn't show that itself. Null
+  // on the web, where the browser's own download UI is the confirmation.
+  const [saveNote, setSaveNote] = useState(null)
+
+  async function saveAndReport(blob, filename, mimeType) {
+    setSaveNote(await saveFile(blob, filename, mimeType))
+  }
+
+  useEffect(() => {
+    if (!saveNote) return
+    // Long enough to read twice, short enough not to sit over the picture.
+    const timer = setTimeout(() => setSaveNote(null), 2600)
+    return () => clearTimeout(timer)
+  }, [saveNote])
+
   function loadSaved(preset) {
     setSelectedPreset('')
     setSelectedSavedId(preset.id)
@@ -514,7 +543,7 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
 
   function handleDownload() {
     canvasRef.current?.toBlob(blob => {
-      if (blob) saveFile(blob, 'staticgrind-output.png', 'image/png')
+      if (blob) saveAndReport(blob, 'staticgrind-output.png', 'image/png')
     }, 'image/png')
   }
 
@@ -525,7 +554,7 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
     const canvas = canvasRef.current
     if (!canvas) return
     canvas.toBlob(blob => {
-      if (blob) saveFile(blob, `staticgrind-snapshot-${Date.now()}.png`, 'image/png')
+      if (blob) saveAndReport(blob, `staticgrind-snapshot-${Date.now()}.png`, 'image/png')
     }, 'image/png')
   }
 
@@ -583,7 +612,7 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
       // and Files unable to make sense of a file that's otherwise perfectly fine.
       const mimeType = picked.mimeType.split(';')[0]
       const blob = new Blob(chunks, { type: mimeType })
-      saveFile(blob, `staticgrind-output.${picked.ext}`, mimeType)
+      saveAndReport(blob, `staticgrind-output.${picked.ext}`, mimeType)
     }
     recorder.start()
     recorderRef.current = recorder
@@ -726,7 +755,7 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
       const { buffer } = mp4TargetRef.current
       if (!buffer || buffer.byteLength === 0) throw new Error('empty output buffer')
       const blob = new Blob([buffer], { type: 'video/mp4' })
-      await saveFile(blob, 'staticgrind-output.mp4', 'video/mp4')
+      await saveAndReport(blob, 'staticgrind-output.mp4', 'video/mp4')
     } catch (err) {
       console.error('MP4 finalize/save failed:', err)
       alert('MP4 export failed on this browser. Try the WEBM format instead, it works everywhere.')
@@ -970,6 +999,15 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
           )}
         </section>
       </aside>
+
+      {saveNote && (
+        <div
+          className={`save-note${saveNote.ok ? '' : ' save-note-bad'}`}
+          role="status"
+        >
+          {saveNote.text}
+        </div>
+      )}
     </div>
   )
 }
