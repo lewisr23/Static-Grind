@@ -129,15 +129,11 @@ export default function App() {
       {!source && (
         <>
           <NoiseBackground />
-          <div className="crt-overlay" aria-hidden="true" />
           <a className="hud hud-tl hud-link" href="/privacy.html">
             PRIVACY
           </a>
           <div className="hud hud-tr" aria-hidden="true">
             <PresetReadout />
-          </div>
-          <div className="hud hud-bl" aria-hidden="true">
-            SRC 01 · NO SIGNAL
           </div>
           <div className="hud hud-br" aria-hidden="true">
             AWAITING INPUT
