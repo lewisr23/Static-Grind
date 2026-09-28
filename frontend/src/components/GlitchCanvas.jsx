@@ -30,6 +30,23 @@ const DEFAULT_PARAMS = {
   kaleidoscope: 0,
   feedback: 0,
   scanlineIntensity: 0,
+  twirl: 0,
+  mosaic: 0,
+  edgeGlow: 0,
+  bloom: 0,
+  solarize: 0,
+  depthPop: 0,
+  depthSlice: 0,
+  depthLight: 0,
+  depthFog: 0,
+  depthBlur: 0,
+  lens: 0,
+  ripple: 0,
+  zoomBlur: 0,
+  halftone: 0,
+  paint: 0,
+  dither: 0,
+  duotone: 0,
 }
 
 const PRESETS = {
@@ -49,10 +66,35 @@ const PRESETS = {
     bitCrush: 0.55, chromaShift: 28, hueShift: 220, displace: 20,
     colorGrade: 'neon', noise: 0.08, pixelSort: 0.45,
   },
+  relief: {
+    depthLight: 0.85, depthFog: 0.3, saturation: -0.45, vignette: 0.35,
+    bloom: 0.2, noise: 0.06,
+  },
+  strata: {
+    depthPop: 34, depthSlice: 0.55, chromaShift: 12, edgeGlow: 0.25,
+    colorGrade: 'vhs', vignette: 0.25,
+  },
+  wireframe: {
+    edgeGlow: 0.8, bloom: 0.45, colorGrade: 'neon', depthPop: 16,
+    saturation: 0.3,
+  },
+  press: {
+    halftone: 0.55, dither: 0.4, duotone: 0.7, vignette: 0.3,
+    noise: 0.05,
+  },
+  aperture: {
+    lens: -0.4, depthBlur: 0.7, bloom: 0.35, vignette: 0.4,
+    saturation: 0.2,
+  },
+  gouache: {
+    paint: 0.65, duotone: 0.45, edgeGlow: 0.2, depthLight: 0.3,
+  },
 }
 
 const PRESET_LABELS = {
   glitchcore: 'Calcium', neonRot: 'Nerve', staticField: 'Mold', prismBreak: 'Seam',
+  relief: 'Plaster', strata: 'Strata', wireframe: 'Filament',
+  press: 'Press', aperture: 'Aperture', gouache: 'Gouache',
 }
 
 const GRADES = [
@@ -63,12 +105,17 @@ const GRADES = [
   { value: 'grayscale', label: 'Grayscale' },
 ]
 
-// Each mod's category drives its accent color in the deck:
-// tone = hue/color · warp = continuous GPU distortion · corrupt = destructive CPU glitch
+// Each mod's category drives which section of the deck it sits in:
+// tone = hue/color · warp = continuous GPU distortion · depth = driven by the
+// shader's stand-in depth field · corrupt = destructive CPU glitch
 const MOD_CONFIG = [
   { key: 'hueShift',          label: 'Hue Shift',     min: 0,  max: 360, step: 1,    def: 0, display: deg,      cat: 'tone' },
   { key: 'saturation',        label: 'Saturation',    min: -1, max: 1,   step: 0.01, def: 0, display: signedPct, cat: 'tone' },
   { key: 'vignette',          label: 'Vignette',      min: 0,  max: 1,   step: 0.01, def: 0, display: pct,      cat: 'tone' },
+  { key: 'bloom',             label: 'Bloom',         min: 0,  max: 1,   step: 0.01, def: 0, display: pct,      cat: 'tone' },
+  { key: 'solarize',          label: 'Solarize',      min: 0,  max: 1,   step: 0.01, def: 0, display: pct,      cat: 'tone' },
+  { key: 'duotone',           label: 'Duotone',       min: 0,  max: 1,   step: 0.01, def: 0, display: pct,      cat: 'tone' },
+  { key: 'dither',            label: 'Dither',        min: 0,  max: 1,   step: 0.01, def: 0, display: pct,      cat: 'tone' },
   { key: 'noise',             label: 'Noise',         min: 0,  max: 1,   step: 0.01, def: 0, display: pct,      cat: 'warp' },
   { key: 'chromaShift',       label: 'Chroma Shift',  min: 0,  max: 50,  step: 1,    def: 0, display: px,       cat: 'warp' },
   { key: 'interlace',         label: 'Interlace',     min: 0,  max: 30,  step: 1,    def: 0, display: px,       cat: 'warp' },
@@ -77,6 +124,19 @@ const MOD_CONFIG = [
   { key: 'displace',          label: 'Displace',      min: 0,  max: 100, step: 1,    def: 0, display: px,       cat: 'warp' },
   { key: 'feedback',          label: 'Feedback',      min: 0,  max: 1,   step: 0.01, def: 0, display: pct,      cat: 'warp' },
   { key: 'scanlineIntensity', label: 'Scanlines',     min: 0,  max: 1,   step: 0.01, def: 0, display: pct,      cat: 'warp' },
+  { key: 'twirl',             label: 'Twirl',         min: -1, max: 1,   step: 0.01, def: 0, display: turn,     cat: 'warp' },
+  { key: 'mosaic',            label: 'Mosaic',        min: 0,  max: 1,   step: 0.01, def: 0, display: pct,      cat: 'warp' },
+  { key: 'edgeGlow',          label: 'Contour',       min: 0,  max: 1,   step: 0.01, def: 0, display: pct,      cat: 'warp' },
+  { key: 'lens',              label: 'Lens',          min: -1, max: 1,   step: 0.01, def: 0, display: signedPct, cat: 'warp' },
+  { key: 'ripple',            label: 'Ripple',        min: 0,  max: 1,   step: 0.01, def: 0, display: pct,      cat: 'warp' },
+  { key: 'zoomBlur',          label: 'Zoom Blur',     min: 0,  max: 1,   step: 0.01, def: 0, display: pct,      cat: 'warp' },
+  { key: 'halftone',          label: 'Halftone',      min: 0,  max: 1,   step: 0.01, def: 0, display: pct,      cat: 'warp' },
+  { key: 'paint',             label: 'Paint',         min: 0,  max: 1,   step: 0.01, def: 0, display: pct,      cat: 'warp' },
+  { key: 'depthPop',          label: 'Depth Pop',     min: 0,  max: 60,  step: 1,    def: 0, display: px,       cat: 'depth' },
+  { key: 'depthSlice',        label: 'Depth Slice',   min: 0,  max: 1,   step: 0.01, def: 0, display: pct,      cat: 'depth' },
+  { key: 'depthLight',        label: 'Relight',       min: 0,  max: 1,   step: 0.01, def: 0, display: pct,      cat: 'depth' },
+  { key: 'depthFog',          label: 'Depth Fog',     min: 0,  max: 1,   step: 0.01, def: 0, display: pct,      cat: 'depth' },
+  { key: 'depthBlur',         label: 'Depth Blur',    min: 0,  max: 1,   step: 0.01, def: 0, display: pct,      cat: 'depth' },
   { key: 'pixelSort',         label: 'Pixel Sort',    min: 0,  max: 1,   step: 0.01, def: 0, display: pct,      cat: 'corrupt' },
   { key: 'sortVertical',      label: 'Sort Vertical', min: 0,  max: 1,   step: 0.01, def: 0, display: pct,      cat: 'corrupt' },
   { key: 'channelSort',       label: 'Channel Sort',  min: 0,  max: 1,   step: 0.01, def: 0, display: pct,      cat: 'corrupt' },
@@ -538,6 +598,23 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
       kaleidoscope:     Math.random() < 0.25 ? rnd(2, 8, true) : 0,
       feedback:         maybe(0.35, 0.05, 0.5),
       scanlineIntensity: maybe(0.4, 0.1, 0.7),
+      twirl:            Math.random() < 0.3 ? rnd(-0.7, 0.7) : 0,
+      mosaic:           maybe(0.2, 0.08, 0.5),
+      edgeGlow:         maybe(0.3, 0.15, 0.85),
+      bloom:            maybe(0.4, 0.1, 0.7),
+      solarize:         maybe(0.25, 0.15, 0.8),
+      depthPop:         maybe(0.4, 8, 50, true),
+      depthSlice:       maybe(0.3, 0.15, 0.8),
+      depthLight:       maybe(0.4, 0.2, 0.9),
+      depthFog:         maybe(0.3, 0.15, 0.6),
+      depthBlur:        maybe(0.35, 0.2, 0.8),
+      lens:             Math.random() < 0.3 ? rnd(-0.6, 0.6) : 0,
+      ripple:           maybe(0.25, 0.1, 0.6),
+      zoomBlur:         maybe(0.25, 0.1, 0.6),
+      halftone:         maybe(0.2, 0.2, 0.7),
+      paint:            maybe(0.25, 0.2, 0.8),
+      dither:           maybe(0.25, 0.2, 0.8),
+      duotone:          maybe(0.3, 0.2, 0.9),
     })
   }
 
@@ -782,8 +859,8 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
       <canvas ref={glCanvasRef} style={{ display: 'none' }} />
 
       {/* ── Left rail: Tone + Warp ──
-          Three categories don't split evenly across two sides, so the split is
-          by height instead: Tone (small) + Warp on the left, Corrupt + the two
+          The groups don't split evenly across two sides, so the split is by
+          height instead: Tone + Warp on the left, Depth + Corrupt + the two
           preset banks on the right come out roughly level. */}
       <aside className="rail rail-left">
         <section className="console-section sec-tone">
@@ -892,7 +969,7 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
 
         {/* Only rendered visibly below three-column width (CSS) */}
         <div className="mobile-tabs" role="tablist" aria-label="Control group">
-          {[['tone', 'Tone'], ['warp', 'Warp'], ['corrupt', 'Corrupt'], ['presets', 'Presets']].map(([key, label]) => (
+          {[['tone', 'Tone'], ['warp', 'Warp'], ['depth', 'Depth'], ['corrupt', 'Corrupt'], ['presets', 'Presets']].map(([key, label]) => (
             <button
               key={key}
               role="tab"
@@ -908,6 +985,15 @@ export default function GlitchCanvas({ sourceUrl, sourceType, onReset }) {
 
       {/* ── Right rail: Corrupt + presets ── */}
       <aside className="rail rail-right">
+        <section className="console-section sec-depth">
+          <h3 className="console-section-title">Depth</h3>
+          {/* There is no real depth channel in a photo, so the shader estimates
+              one from brightness and these four knobs all read that same field:
+              Pop and Slice move pixels by it, Relight shades by its gradient,
+              Fog fades by it. They stack, and stacking them is the point. */}
+          <div className="knob-row">{knobsFor('depth')}</div>
+        </section>
+
         <section className="console-section sec-corrupt">
           <h3 className="console-section-title">Corrupt</h3>
           <div className="knob-row">{knobsFor('corrupt')}</div>
@@ -1192,6 +1278,12 @@ function Knob({ label, value, min, max, step, def = min, display, cat, onChange,
   )
 }
 
+// Twirl is bipolar, and the half-turn either side of centre reads better as
+// the angle it actually is than as a percentage of nothing in particular
+function turn(v) {
+  if (v === 0) return 'Off'
+  return `${v > 0 ? '+' : '\u2212'}${Math.abs(Math.round(v * 180))}\u00B0`
+}
 function pct(v) { return v === 0 ? 'Off' : `${Math.round(v * 100)}%` }
 function signedPct(v) {
   if (v === 0) return 'Off'

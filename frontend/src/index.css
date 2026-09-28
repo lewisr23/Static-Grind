@@ -669,6 +669,7 @@ body {
 
   .glitch-workspace[data-tab="tone"] .console-section:not(.sec-tone),
   .glitch-workspace[data-tab="warp"] .console-section:not(.sec-warp),
+  .glitch-workspace[data-tab="depth"] .console-section:not(.sec-depth),
   .glitch-workspace[data-tab="corrupt"] .console-section:not(.sec-corrupt),
   .glitch-workspace[data-tab="presets"] .console-section:not(.sec-presets):not(.sec-saved) {
     display: none;
